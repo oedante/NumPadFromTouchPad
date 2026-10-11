@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- WinForms нужен только для NotifyIcon (значок в трее), как и в исходном проекте. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>NumPad.App</RootNamespace>
+    <AssemblyName>NumPadFromTouchPad</AssemblyName>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Product>NumPad from TouchPad</Product>
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <Platforms>AnyCPU;x64;ARM64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Исключаем глобальные using WinForms, чтобы не было конфликтов имён с WPF (Application, Button, ...). -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\tray_on.ico" />
+    <Resource Include="Assets\tray_off.ico" />
+    <Resource Include="Assets\tray_on.png" />
+    <Resource Include="Assets\tray_off.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NumPad.Core\NumPad.Core.csproj" />
+  </ItemGroup>
+
+</Project>

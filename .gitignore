@@ -1,0 +1,10 @@
+bin/
+obj/
+artifacts/
+TestResults/
+.vs/
+*.user
+*.suo
+.idea/
+.DS_Store
+mac/.build/

@@ -1,0 +1,61 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core-tests-linux:
+    # Общая логика не зависит от Windows — тесты гоняются и на Linux.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test tests/NumPad.Core.Tests/NumPad.Core.Tests.csproj -c Release --logger "trx;LogFileName=core-tests.trx" --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-linux
+          path: TestResults
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Build (warnings shown)
+        run: dotnet build NumPadFromTouchPad.sln -c Release
+      - name: Test
+        run: dotnet test tests/NumPad.Core.Tests/NumPad.Core.Tests.csproj -c Release --no-build --logger "trx;LogFileName=core-tests.trx" --results-directory TestResults
+      - name: Publish win-x64 (self-contained single file)
+        run: dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=win-x64
+      - name: Publish win-arm64
+        run: dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=win-arm64
+      - name: Smoke start (process starts and stays alive 5 s)
+        shell: pwsh
+        run: |
+          $exe = "artifacts/win-x64/NumPadFromTouchPad.exe"
+          $p = Start-Process $exe -ArgumentList "--minimized" -PassThru
+          Start-Sleep -Seconds 5
+          if ($p.HasExited) { Write-Error "Process exited with code $($p.ExitCode)"; exit 1 }
+          Stop-Process -Id $p.Id -Force
+          $log = Join-Path $env:APPDATA "NumPadFromTouchPad/logs/numpad.log"
+          if (Test-Path $log) { Get-Content $log }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NumPadFromTouchPad-win-x64
+          path: artifacts/win-x64/NumPadFromTouchPad.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NumPadFromTouchPad-win-arm64
+          path: artifacts/win-arm64/NumPadFromTouchPad.exe
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-windows
+          path: TestResults

@@ -1,0 +1,56 @@
+<UserControl x:Class="NumPad.App.Views.DiagnosticsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="28,24,28,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <DockPanel Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="Обновить устройства" Click="OnRefreshDevices" />
+                <Button Content="Копировать отчёт" Click="OnCopy" />
+                <Button Content="Открыть журнал" Click="OnOpenLog" Margin="0" />
+            </StackPanel>
+            <TextBlock Text="Диагностика" Style="{StaticResource PageTitle}" />
+        </DockPanel>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Устройства" Style="{StaticResource SectionTitle}" />
+                    <TextBlock x:Name="DevicesText" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Состояние" Style="{StaticResource SectionTitle}" />
+                    <TextBlock x:Name="SummaryText" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border Style="{StaticResource Card}" Margin="0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Касания (только на экране, не записываются)" Style="{StaticResource SectionTitle}" />
+                    <TextBlock x:Name="ContactsText" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" />
+                </DockPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource Card}" Margin="0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Журнал" Style="{StaticResource SectionTitle}" />
+                    <TextBox x:Name="LogText" FontFamily="Consolas" FontSize="11" IsReadOnly="True" TextWrapping="NoWrap"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" BorderThickness="0" />
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
