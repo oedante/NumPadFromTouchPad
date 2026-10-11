@@ -6,6 +6,11 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Создать pre-release с этим тегом (пусто — без релиза)'
+        required: false
+        default: ''
 
 jobs:
   core-tests-linux:
@@ -85,12 +90,13 @@ jobs:
         with:
           name: test-results-windows
           path: TestResults
-      - name: GitHub Release (tags v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: GitHub Release (tags v* or manual run with release_tag)
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release_tag != ''
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           Copy-Item artifacts/win-x64/NumPadFromTouchPad.exe NumPadFromTouchPad-win-x64.exe
           Copy-Item artifacts/win-arm64/NumPadFromTouchPad.exe NumPadFromTouchPad-win-arm64.exe
-          gh release create "${{ github.ref_name }}" NumPadFromTouchPad-win-x64.exe NumPadFromTouchPad-win-arm64.exe --prerelease --title "NumPad from TouchPad ${{ github.ref_name }}" --notes-file CHANGELOG.md
+          $tag = if ("${{ github.event.inputs.release_tag }}") { "${{ github.event.inputs.release_tag }}" } else { "${{ github.ref_name }}" }
+          gh release create $tag NumPadFromTouchPad-win-x64.exe NumPadFromTouchPad-win-arm64.exe --target $env:GITHUB_SHA --prerelease --title "NumPad from TouchPad $tag" --notes-file CHANGELOG.md
