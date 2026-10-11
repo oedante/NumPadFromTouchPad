@@ -107,6 +107,7 @@ public sealed class AppController : IDisposable
                 ? "Тачпад найден, но он не является Precision Touchpad: Windows не передаёт координаты касаний."
                 : "Precision Touchpad не найден.";
 
+        if (InputError is not null) Log.Warn(InputError);
         ApplyHotkey(Settings.Hotkey, out _);
 
         SystemEvents.SessionSwitch += OnSessionSwitch;

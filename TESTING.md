@@ -1,0 +1,67 @@
+# TESTING.md — тесты и статус проверок
+
+## Автоматизированные тесты
+
+Проект `tests/NumPad.Core.Tests` (xUnit, .NET 8). Тестирует общую логику через тестовый источник касаний `FakeTouchpad` и регистратор `RecordingKeyboard` — производственный движок (`KeyPressEngine`, `ModeManager`) не подменяется, подменяются только устройство и вывод.
+
+Каждый тест нажатий проверяет не только KeyDown, но и KeyUp, и что после теста ни одна клавиша не числится нажатой (`AssertBalanced`, `PressedKeyCount == 0`).
+
+| № ТЗ | Сценарий | Тест |
+|---|---|---|
+| 1 | Однократное нажатие | `SingleTap_PressesAndReleasesOnce` |
+| 2 | Повтор той же клавиши (те же координаты, тот же Contact ID) | `RepeatedTapOnSameSpot_WithSameContactId_PressesTwice` |
+| 3 | 10 быстрых нажатий (8 мс) | `TenFastTaps_NoneLost`, `FastTaps_WhenDeviceOmitsTipZeroReport_StillCounted` |
+| 4 | Разные клавиши подряд | `DifferentKeysInSequence` |
+| 5 | Удержание | `Hold_KeyStaysDownUntilLift_WithAutoRepeat`, `Hold_WithoutRepeat_SingleDown` |
+| 6–7 | Перемещение между зонами | `SlideToOtherZone_KeepKey_HoldsOriginalKey`, `SlideToOtherZone_ReleaseOnExit`, `OnRelease_LiftOutsideOriginalZone_Cancels` |
+| 8 | Несколько зон одновременно | `MultiTouch_IndependentKeys`, `TwoFingersSameZone_RefCounted` |
+| 9 | Переключение режима во время нажатия | `ModeSwitchWhileHolding_ReleasesKey_AndFingerDoesNotRepressAfterReEnable`, `Toggle_IsDebounced` |
+| 10 | Завершение во время удержания | `ShutdownWhileHolding_ReleasesEverything` |
+| 11 | Ошибка генерации события | `KeyDownFailure_DoesNotLeaveStateAndNextPressWorks`, `KeyUpFailure_IsRetriedUntilDelivered`, `ComboFailure_RollsBackModifiers` |
+| 12 | Потеря устройства / потерянный отрыв | `StaleContact_IsReleasedByWatchdog`, `DeviceLost_ReleasesAll_ModeStays` |
+| 13 | Некорректная конфигурация | `Validator_DetectsAllProblemKinds`, `Validator_EmptyLayoutIsError`, `InvalidLayoutFiles_AreSkippedWithWarning` |
+| 14 | Калибровка с разными пропорциями | `Solve_RecoversDeviceRect` (4 набора), `Solve_HandlesRotationAndNoise`, `Calibration_ChangesRealHitBoundaries` |
+| 15 | Касание вне активной области | `TouchOutsideArea_DoesNothing` |
+| 16 | Граница двух зон | `TouchOnSharedBorder_ExactlyOneKey`, `HitTester_OverlapResolvedByNearestCenter`, `HitTester_Num20_Table` |
+| 17 | Модификаторы | `ModifierHeldByOneFinger_AppliesToOtherFinger`, `Combo_PressOrderAndReverseRelease`, `Modifier_HoldsEvenInOnReleaseMode` |
+| 18 | Конфликт горячих клавиш | `ConflictWarnings` (6 случаев), `Parse_RejectsInvalid` |
+| 19 | Сохранение/восстановление профиля | `Settings_RoundTrip_WithDeviceProfile`, `Layouts_SaveLoadOverrideAndReset`, `Import_AssignsUniqueId` |
+| 20 | Запуск после аварийного завершения | `SessionGuard_DetectsCrash_AndKeepsPendingRestore`, `CorruptSettings_AreQuarantined_AndDefaultsLoaded` |
+
+Дополнительно: ладонь (Confidence), Num Lock, ввод текста, смена конфигурации во время удержания, подавление указателя, встроенные раскладки NUM10/20/30 валидны и без перекрытий.
+
+### Результаты
+
+Прогоняются в CI (`.github/workflows/build.yml`) на Linux и Windows при каждом push. См. раздел «Журнал прогонов» ниже.
+
+## Ручные проверки на реальном оборудовании (не выполнены — нет устройства)
+
+Чек-лист для Windows-ноутбука с Precision Touchpad. Диагностика в приложении показывает живые контакты, частоту кадров и счётчики.
+
+1. **Обнаружение**: «Диагностика» показывает тачпад, контактов ≥ 2, диапазоны X/Y, размер в мм (если сообщается).
+2. **Кадры**: при касании — 100–250 кадров/с; при отрыве контакт пропадает (Tip = нет в последнем кадре).
+3. **Повтор**: в Блокноте 20 раз коснуться «7» в одно место — 20 символов; быстро барабанить — ни одного пропуска.
+4. **Удержание**: держать «Backspace» — автоповтор через ~0,5 с; отпустить — остановка сразу.
+5. **Цифровой блок**: Excel / калькулятор Windows получают Num-клавиши; Numpad Enter в Excel ведёт себя как Enter цифрового блока; «.» с выключенным/включённым Num Lock.
+6. **Модификаторы**: держать Shift-зону (NUM20) + коснуться Home → выделение до начала строки.
+7. **Print Screen**: снимок экрана / открытие «Ножниц» по настройке Windows.
+8. **Подавление курсора**: в режиме NumPad касания клавиш не двигают курсор и не кликают; счётчик «заблокировано событий» растёт. В NUM10 левая часть двигает курсор. Внешняя мышь работает вне моментов касания.
+9. **Жесты (Win 11 24H2+)**: при включённом режиме тап и прокрутка двумя пальцами отключены; после выключения режима/выхода/убийства процесса через диспетчер задач и повторного запуска — восстановлены.
+10. **Переключение**: хоткей работает в любом приложении; занятый хоткей даёт понятное сообщение.
+11. **Блокировка/сон**: Win+L и сон выключают режим; после возврата нет зажатых клавиш.
+12. **Отключение устройства**: отключить тачпад в диспетчере устройств во время удержания — клавиша отпускается, сообщение в UI; включить — работа возобновляется.
+13. **Аварийное завершение**: держать Shift-зону, убить процесс → Shift может остаться зажатым до следующего запуска; при запуске — сообщение «предыдущий запуск завершился аварийно», Shift отпущен.
+14. **UIPI**: в окне, запущенном от администратора, нажатия не доходят (ожидаемое ограничение).
+15. **CPU**: в простое < 1 %, при активном касании — единицы процентов.
+16. **Калибровка**: после калибровки по пяти клавишам все клавиши наклейки распознаются в режиме проверки; ручные границы влияют на распознавание.
+
+## macOS
+
+Не проверялась. См. `mac/README.md`.
+
+## Журнал прогонов
+
+| Дата | Где | Результат |
+|---|---|---|
+| 2026-10-11 | GitHub Actions, ubuntu-latest | тесты ядра: пройдены |
+| 2026-10-11 | GitHub Actions, windows-latest | сборка решения, тесты, publish win-x64/arm64, смоук-запуск exe: пройдены |

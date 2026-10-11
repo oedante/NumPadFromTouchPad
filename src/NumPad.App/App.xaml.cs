@@ -19,12 +19,14 @@ public partial class App : Application
     private TrayIcon? _tray;
     private MainWindow? _window;
     private bool _exiting;
+    private bool _selfTest;
 
     public static AppController Controller => ((App)Current)._controller!;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        _selfTest = e.Args.Any(a => a.Equals("--selftest", StringComparison.OrdinalIgnoreCase));
 
         // Один экземпляр: второй запуск просит первый показать окно и завершается (иначе два процесса
         // боролись бы за одну горячую клавишу и оба генерировали бы нажатия).
@@ -61,8 +63,43 @@ public partial class App : Application
         _tray.OpenRequested += ShowMainWindow;
         _tray.ExitRequested += ExitApplication;
 
+        if (_selfTest)
+        {
+            Dispatcher.InvokeAsync(RunSelfTest, DispatcherPriority.ApplicationIdle);
+            return;
+        }
+
         bool minimized = e.Args.Any(a => a.Equals("--minimized", StringComparison.OrdinalIgnoreCase)) || _controller.Settings.StartMinimized;
         if (!minimized) ShowMainWindow();
+    }
+
+    /// <summary>
+    /// Самопроверка для CI (--selftest): создаёт главное окно, открывает все страницы (разбор XAML, ресурсы,
+    /// отрисовка), пишет результат в selftest-result.txt и завершается с кодом 0 / 2.
+    /// </summary>
+    private void RunSelfTest()
+    {
+        string resultPath = Path.Combine(_controller!.Store.RootDir, "selftest-result.txt");
+        try
+        {
+            ShowMainWindow();
+            foreach (var tag in new[] { "layout", "calibration", "settings", "diagnostics", "home" })
+            {
+                _window!.Navigate(tag);
+                _window.UpdateLayout();
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+            }
+            File.WriteAllText(resultPath, "OK " + _controller.DiagnosticsSummary().Replace(Environment.NewLine, " | "));
+            _controller.Log.Info("Самопроверка пройдена.");
+            ExitApplication();
+        }
+        catch (Exception ex)
+        {
+            File.WriteAllText(resultPath, "FAIL " + ex);
+            _controller.Log.Error("Самопроверка не пройдена", ex);
+            _exiting = true;
+            Shutdown(2);
+        }
     }
 
     public void ShowMainWindow()
@@ -114,7 +151,14 @@ public partial class App : Application
     {
         _controller?.Log.Error("Необработанное исключение в UI", e.Exception);
         _controller?.SafeDisable("unhandled exception");
-        e.Handled = true; // приложение продолжает работать; режим NumPad выключен ради безопасности
+        e.Handled = true;
+        if (_selfTest)
+        {
+            try { File.WriteAllText(Path.Combine(_controller!.Store.RootDir, "selftest-result.txt"), "FAIL " + e.Exception); } catch { }
+            _exiting = true;
+            Shutdown(3);
+            return;
+        } // приложение продолжает работать; режим NumPad выключен ради безопасности
         MessageBox.Show("Произошла ошибка, режим NumPad выключен.\n" + e.Exception.Message + "\n\nПодробности — в журнале диагностики.",
             "NumPad from TouchPad", MessageBoxButton.OK, MessageBoxImage.Warning);
     }

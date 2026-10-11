@@ -18,6 +18,8 @@
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.0</FileVersion>
     <Platforms>AnyCPU;x64;ARM64</Platforms>
+    <!-- WFAC010 — анализатор WinForms; DPI-режим WPF-приложения задаётся манифестом (PerMonitorV2). -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

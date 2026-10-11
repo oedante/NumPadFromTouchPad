@@ -63,6 +63,15 @@ jobs:
           Stop-Process -Id $p.Id -Force
           $log = Join-Path $env:APPDATA "NumPadFromTouchPad/logs/numpad.log"
           if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host "::notice title=App log::$_" } }
+      - name: UI self-test (main window + all pages)
+        shell: pwsh
+        run: |
+          $p = Start-Process "artifacts/win-x64/NumPadFromTouchPad.exe" -ArgumentList "--selftest" -PassThru
+          if (-not $p.WaitForExit(60000)) { Stop-Process -Id $p.Id -Force; Write-Error "Self-test timed out"; exit 1 }
+          $res = Join-Path $env:APPDATA "NumPadFromTouchPad/selftest-result.txt"
+          $text = if (Test-Path $res) { Get-Content $res -Raw } else { "no result file" }
+          Write-Host "::notice title=Self-test (exit $($p.ExitCode))::$($text -replace "`r?`n", ' / ')"
+          if ($p.ExitCode -ne 0) { exit 1 }
       - uses: actions/upload-artifact@v4
         with:
           name: NumPadFromTouchPad-win-x64
