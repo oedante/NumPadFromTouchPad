@@ -24,6 +24,8 @@
     <!-- Исключаем глобальные using WinForms, чтобы не было конфликтов имён с WPF (Application, Button, ...). -->
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
+    <!-- WPF-SDK не добавляет System.IO в неявные using (конфликт с Shapes.Path); Shapes мы не используем. -->
+    <Using Include="System.IO" />
   </ItemGroup>
 
   <ItemGroup>

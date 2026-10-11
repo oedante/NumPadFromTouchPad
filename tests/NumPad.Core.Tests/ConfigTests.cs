@@ -125,7 +125,7 @@ public class ConfigTests
         store.ExportLayout(BuiltInLayouts.Num20(), path);
         var imported = store.ImportLayout(path, new[] { "num10", "num20", "num30" });
         Assert.Equal("num20-2", imported.Id);
-        Assert.Empty(LayoutValidator.Validate(imported).Where(i => i.Severity == IssueSeverity.Error));
+        Assert.DoesNotContain(LayoutValidator.Validate(imported), i => i.Severity == IssueSeverity.Error);
     }
 
     [Fact] // 20 — повторный запуск после аварийного завершения
