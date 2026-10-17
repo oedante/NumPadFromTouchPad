@@ -1,3 +1,4 @@
+using Ogneliss.NumTouch.Core.Layouts;
 using Ogneliss.NumTouch.Core.Engine;
 using Ogneliss.NumTouch.Core.Keys;
 using Ogneliss.NumTouch.Platform;
@@ -153,8 +154,8 @@ public class KeyCodeTableTests
     [Fact]
     public void NumpadAndBuiltInLayouts_HaveMacCodes()
     {
-        foreach (var layout in Layouts.BuiltInLayouts.All)
-            foreach (var z in layout.Keys.Where(z => z.Action.Kind is Layouts.KeyActionKind.Key or Layouts.KeyActionKind.Combo))
+        foreach (var layout in BuiltInLayouts.All)
+            foreach (var z in layout.Keys.Where(z => z.Action.Kind is KeyActionKind.Key or KeyActionKind.Combo))
             {
                 var k = KeyCatalog.Get(z.Action.Key!);
                 if (k.Group is KeyGroup.Media or KeyGroup.System) continue; // на Mac нет PrintScreen/калькулятора — документировано

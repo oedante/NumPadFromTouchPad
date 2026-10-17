@@ -4,6 +4,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Ogneliss.NumTouch.App.Views;
+using Ogneliss.NumTouch.Core.Diagnostics;
 using Ogneliss.NumTouch.Core.Engine;
 
 namespace Ogneliss.NumTouch.App.Services;

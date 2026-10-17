@@ -1,3 +1,4 @@
+using Ogneliss.NumTouch.Core.Keys;
 using Ogneliss.NumTouch.Core.Engine;
 using Ogneliss.NumTouch.Core.Layouts;
 using static Ogneliss.NumTouch.Tests.TestLayouts;
@@ -258,8 +259,8 @@ public class KeyPressEngineTests
         private readonly string _fail;
         public readonly List<string> Events = new();
         public FailOnKey(string fail) => _fail = fail;
-        public bool KeyDown(Keys.KeyDefinition key) { if (key.Name == _fail) { Events.Add($"!down:{key.Name}"); return false; } Events.Add($"down:{key.Name}"); return true; }
-        public bool KeyUp(Keys.KeyDefinition key) { Events.Add($"up:{key.Name}"); return true; }
+        public bool KeyDown(KeyDefinition key) { if (key.Name == _fail) { Events.Add($"!down:{key.Name}"); return false; } Events.Add($"down:{key.Name}"); return true; }
+        public bool KeyUp(KeyDefinition key) { Events.Add($"up:{key.Name}"); return true; }
         public bool TypeText(string text) => true;
         public bool IsNumLockOn => true;
     }
@@ -382,7 +383,7 @@ public class KeyPressEngineTests
     {
         var r = new Rig();
         r.Pad.Touch(0, Seven.X, Seven.Y);
-        r.Engine.Configure(Grid2x2(), Calibration.AffineTransform.Identity, new EngineOptions { AutoRepeat = false });
+        r.Engine.Configure(Grid2x2(), Ogneliss.NumTouch.Core.Calibration.AffineTransform.Identity, new EngineOptions { AutoRepeat = false });
         Assert.Equal(new[] { "down:Numpad7", "up:Numpad7" }, r.Kb.Events);
         r.Pad.Move(0, Seven.X, Seven.Y + 0.01);
         r.Pad.Lift(0);
