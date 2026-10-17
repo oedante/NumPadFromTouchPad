@@ -2,25 +2,25 @@
 
 ## Стек
 
-C# / **.NET 10 (LTS)** / **Avalonia 11** — один код интерфейса для Windows, Linux и macOS. Всё платформенное (касания, вывод клавиш, блокировка курсора, горячая клавиша, автозапуск) — за интерфейсами `NumPad.Platform`; реализация выбирается во время выполнения (`PlatformFactory`).
+C# / **.NET 10 (LTS)** / **Avalonia 11** — один код интерфейса для Windows, Linux и macOS. Всё платформенное (касания, вывод клавиш, блокировка курсора, горячая клавиша, автозапуск) — за интерфейсами `Ogneliss.NumTouch.Platform`; реализация выбирается во время выполнения (`PlatformFactory`).
 
 История: 2.0 — WPF только для Windows (тег `v2.0.0-rc1`); 3.0 — переход на Avalonia, общий платформенный слой, бэкенды Linux и macOS.
 
 ## Структура решения
 
 ```
-NumPadFromTouchPad.sln
-├─ src/NumPad.Core              — логика без ОС: автомат нажатий, раскладки, hit-testing, калибровка, настройки, коды клавиш
-├─ src/NumPad.Platform          — интерфейсы платформы, монотонные часы, сборка кадров PTP, заглушка NullPlatform
-├─ src/NumPad.Platform.Windows  — Raw Input (PTP), SendInput, RegisterHotKey, WH_MOUSE_LL, SPI тачпада, реестр
-├─ src/NumPad.Platform.Linux    — evdev (тачпад, клавиатуры), uinput (клавиши, курсор), EVIOCGRAB, XDG autostart
-├─ src/NumPad.Platform.MacOS    — MultitouchSupport, CGEvent, Carbon hotkey, CGEventTap, LaunchAgent (прототип)
-├─ src/NumPad.App               — Avalonia: окно, 5 страниц, трей, контроллер
-├─ tests/NumPad.Core.Tests      — xUnit: ядро + платформенная логика без ввода-вывода (на всех 3 ОС в CI)
+OgnelissNumTouch.sln
+├─ src/Ogneliss.NumTouch.Core              — логика без ОС: автомат нажатий, раскладки, hit-testing, калибровка, настройки, коды клавиш
+├─ src/Ogneliss.NumTouch.Platform          — интерфейсы платформы, монотонные часы, сборка кадров PTP, заглушка NullPlatform
+├─ src/Ogneliss.NumTouch.Platform.Windows  — Raw Input (PTP), SendInput, RegisterHotKey, WH_MOUSE_LL, SPI тачпада, реестр
+├─ src/Ogneliss.NumTouch.Platform.Linux    — evdev (тачпад, клавиатуры), uinput (клавиши, курсор), EVIOCGRAB, XDG autostart
+├─ src/Ogneliss.NumTouch.Platform.MacOS    — MultitouchSupport, CGEvent, Carbon hotkey, CGEventTap, LaunchAgent (прототип)
+├─ src/Ogneliss.NumTouch.App               — Avalonia: окно, 5 страниц, трей, контроллер
+├─ tests/Ogneliss.NumTouch.Tests      — xUnit: ядро + платформенная логика без ввода-вывода (на всех 3 ОС в CI)
 └─ packaging/                   — linux: udev-правило, .desktop, install.sh; macos: сборка .app
 ```
 
-## Интерфейсы платформы (`NumPad.Platform/Abstractions.cs`)
+## Интерфейсы платформы (`Ogneliss.NumTouch.Platform/Abstractions.cs`)
 
 | Интерфейс | Windows | Linux | macOS |
 |---|---|---|---|

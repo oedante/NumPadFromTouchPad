@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="using:Ogneliss.NumTouch.App.Localization"
+             x:Class="Ogneliss.NumTouch.App.Views.DiagnosticsPage">
+    <Grid Margin="28,24,28,20" RowDefinitions="Auto,Auto,*">
+        <DockPanel Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button x:Name="RefreshButton" Content="{l:T 'Refresh devices'}" />
+                <Button x:Name="CopyButton" Content="{l:T 'Copy report'}" />
+                <Button x:Name="OpenLogButton" Content="{l:T 'Open log'}" />
+            </StackPanel>
+            <TextBlock Classes="title" Text="{l:T 'Diagnostics'}" />
+        </DockPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,12,*">
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="section" Text="{l:T 'Devices'}" />
+                    <SelectableTextBlock x:Name="DevicesText" FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="12" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="section" Text="{l:T 'Status'}" />
+                    <SelectableTextBlock x:Name="SummaryText" FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="12" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,12,*">
+            <Border Classes="card" Margin="0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Classes="section" Text="{l:T 'Contacts (on screen only, never recorded)'}" />
+                    <TextBlock x:Name="ContactsText" Classes="mono" />
+                </DockPanel>
+            </Border>
+            <Border Grid.Column="2" Classes="card" Margin="0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Classes="section" Text="{l:T 'Log'}" />
+                    <TextBox x:Name="LogText" FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="11" IsReadOnly="True"
+                             TextWrapping="NoWrap" AcceptsReturn="True" BorderThickness="0" />
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

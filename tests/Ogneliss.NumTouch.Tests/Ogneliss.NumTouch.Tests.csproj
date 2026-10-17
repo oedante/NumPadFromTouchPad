@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Тесты вызывают чистые функции платформенных сборок (без системных вызовов) на любой ОС. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Тестовая инфраструктура: стандартный стек xUnit. -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Ogneliss.NumTouch.Core\Ogneliss.NumTouch.Core.csproj" />
+    <ProjectReference Include="..\..\src\Ogneliss.NumTouch.Platform\Ogneliss.NumTouch.Platform.csproj" />
+    <ProjectReference Include="..\..\src\Ogneliss.NumTouch.Platform.Linux\Ogneliss.NumTouch.Platform.Linux.csproj" />
+    <ProjectReference Include="..\..\src\Ogneliss.NumTouch.Platform.Windows\Ogneliss.NumTouch.Platform.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Ogneliss.NumTouch.Core.Localization" />
+  </ItemGroup>
+
+</Project>

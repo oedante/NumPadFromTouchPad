@@ -2,7 +2,7 @@
 
 ## Автоматизированные тесты
 
-Проект `tests/NumPad.Core.Tests` (xUnit, .NET 10). Тестирует общую логику через тестовый источник касаний `FakeTouchpad` и регистратор `RecordingKeyboard` — производственный движок (`KeyPressEngine`, `ModeManager`) не подменяется, подменяются только устройство и вывод.
+Проект `tests/Ogneliss.NumTouch.Tests` (xUnit, .NET 10). Тестирует общую логику через тестовый источник касаний `FakeTouchpad` и регистратор `RecordingKeyboard` — производственный движок (`KeyPressEngine`, `ModeManager`) не подменяется, подменяются только устройство и вывод.
 
 Каждый тест нажатий проверяет не только KeyDown, но и KeyUp, и что после теста ни одна клавиша не числится нажатой (`AssertBalanced`, `PressedKeyCount == 0`).
 

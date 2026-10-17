@@ -1,0 +1,6 @@
+<Project>
+  <!-- Общее для всех проектов src: локализация доступна без using в каждом файле. -->
+  <ItemGroup>
+    <Using Include="Ogneliss.NumTouch.Core.Localization" />
+  </ItemGroup>
+</Project>

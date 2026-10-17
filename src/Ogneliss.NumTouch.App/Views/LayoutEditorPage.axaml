@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Ogneliss.NumTouch.App.Controls"
+             xmlns:l="using:Ogneliss.NumTouch.App.Localization"
+             x:Class="Ogneliss.NumTouch.App.Views.LayoutEditorPage">
+    <Grid Margin="28,24,28,20" RowDefinitions="Auto,Auto,Auto,*,Auto">
+        <DockPanel Grid.Row="0" Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock x:Name="DirtyMark" Text="{l:T '● unsaved changes'}" Foreground="{StaticResource WarningBrush}" VerticalAlignment="Center" IsVisible="False" />
+                <Button x:Name="RevertButton" Content="{l:T 'Discard changes'}" />
+                <Button x:Name="SaveButton" Content="{l:T 'Save'}" />
+                <Button x:Name="SaveApplyButton" Content="{l:T 'Save and apply'}" Classes="primary" />
+            </StackPanel>
+            <TextBlock Classes="title" Text="{l:T 'Layouts'}" />
+        </DockPanel>
+
+        <!-- Управление раскладками -->
+        <WrapPanel Grid.Row="1" Margin="0,0,0,8">
+            <ComboBox x:Name="LayoutBox" Width="300" Margin="0,0,8,6" />
+            <Button x:Name="NewButton" Content="{l:T 'New'}" Margin="0,0,8,6" />
+            <Button x:Name="DuplicateButton" Content="{l:T 'Duplicate'}" Margin="0,0,8,6" />
+            <Button x:Name="DeleteLayoutButton" Content="{l:T 'Delete'}" Classes="danger" Margin="0,0,8,6" />
+            <Button x:Name="ResetButton" Content="{l:T 'Restore default'}" Margin="0,0,8,6" />
+            <Button x:Name="ImportButton" Content="{l:T 'Import…'}" Margin="0,0,8,6" />
+            <Button x:Name="ExportButton" Content="{l:T 'Export…'}" Margin="0,0,8,6" />
+        </WrapPanel>
+
+        <!-- Инструменты -->
+        <WrapPanel Grid.Row="2" Margin="0,0,0,8">
+            <Button x:Name="AddKeyButton" Content="{l:T '+ Key to the right'}" Margin="0,0,8,6" />
+            <Button x:Name="AddKeyBelowButton" Content="{l:T '+ Below'}" Margin="0,0,8,6" />
+            <Button x:Name="DeleteKeyButton" Content="{l:T 'Delete key'}" Margin="0,0,8,6" />
+            <Button x:Name="UndoButton" Content="{l:T '↶ Undo'}" Margin="0,0,8,6" ToolTip.Tip="Ctrl+Z" />
+            <Button x:Name="RedoButton" Content="{l:T '↷ Redo'}" Margin="0,0,16,6" ToolTip.Tip="Ctrl+Y" />
+            <CheckBox x:Name="SnapBox" Content="{l:T 'Grid'}" IsChecked="True" Margin="0,0,16,6" VerticalAlignment="Center" />
+            <TextBlock Text="{l:T 'Gap, %:'}" VerticalAlignment="Center" Margin="0,0,6,6" />
+            <TextBox x:Name="GapBox" Width="64" Margin="0,0,16,6" />
+            <TextBlock Text="{l:T 'Aspect (W/H):'}" VerticalAlignment="Center" Margin="0,0,6,6" />
+            <TextBox x:Name="AspectBox" Width="64" Margin="0,0,16,6" />
+            <CheckBox x:Name="PointerOutsideBox" Content="{l:T 'Cursor outside keys'}" VerticalAlignment="Center" Margin="0,0,0,6"
+                      ToolTip.Tip="{l:T 'Touches outside the key rectangle move the cursor (like the trackpad zone in NUM10)'}" />
+        </WrapPanel>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*,16,310">
+            <Border Classes="card" Padding="8" Margin="0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Bottom" Classes="subtle" FontSize="12" Margin="8,6,8,2"
+                               Text="{l:T 'Drag keys with the mouse; drag a corner to resize. Arrows move (Shift for larger steps), Delete removes. Touchpad contacts are drawn on top, so you can see where a finger lands before saving.'}" />
+                    <c:LayoutCanvas x:Name="EditorCanvas" />
+                </DockPanel>
+            </Border>
+
+            <Border Grid.Column="2" Classes="card" Margin="0">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock Classes="section" Text="{l:T 'Layout'}" />
+                        <TextBlock Classes="label" Text="{l:T 'Name'}" />
+                        <TextBox x:Name="NameBox" />
+
+                        <TextBlock x:Name="KeyHeader" Classes="section" Text="{l:T 'Key'}" Margin="0,18,0,0" />
+                        <StackPanel x:Name="KeyPanel">
+                            <TextBlock Classes="label" Text="{l:T 'Label on the diagram'}" />
+                            <TextBox x:Name="LabelBox" />
+                            <TextBlock Classes="label" Text="{l:T 'What the key does'}" />
+                            <ComboBox x:Name="KindBox" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="{l:T 'Presses a key'}" Tag="Key" />
+                                <ComboBoxItem Content="{l:T 'Presses a shortcut'}" Tag="Combo" />
+                                <ComboBoxItem Content="{l:T 'Types text'}" Tag="Text" />
+                                <ComboBoxItem Content="{l:T 'Nothing (empty zone)'}" Tag="None" />
+                            </ComboBox>
+                            <StackPanel x:Name="KeyChoicePanel">
+                                <TextBlock Classes="label" Text="{l:T 'Key'}" />
+                                <ComboBox x:Name="KeyBox" HorizontalAlignment="Stretch" MaxDropDownHeight="380" />
+                            </StackPanel>
+                            <WrapPanel x:Name="ModifiersPanel" Margin="0,4,0,0">
+                                <CheckBox x:Name="ModCtrl" Content="Ctrl" Margin="0,0,12,0" />
+                                <CheckBox x:Name="ModShift" Content="Shift" Margin="0,0,12,0" />
+                                <CheckBox x:Name="ModAlt" Content="Alt" Margin="0,0,12,0" />
+                                <CheckBox x:Name="ModWin" Content="Win / Cmd" />
+                            </WrapPanel>
+                            <StackPanel x:Name="TextPanel">
+                                <TextBlock Classes="label" Text="{l:T 'Text'}" />
+                                <TextBox x:Name="TextValueBox" />
+                            </StackPanel>
+
+                            <TextBlock Classes="label" Text="{l:T 'Position and size, % of the area'}" />
+                            <Grid ColumnDefinitions="Auto,*,8,Auto,*" RowDefinitions="Auto,6,Auto">
+                                <TextBlock Text="X" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="XBox" Grid.Column="1" />
+                                <TextBlock Text="Y" Margin="0,0,4,0" Grid.Column="3" VerticalAlignment="Center" />
+                                <TextBox x:Name="YBox" Grid.Column="4" />
+                                <TextBlock Text="{l:T 'W'}" Margin="0,0,4,0" Grid.Row="2" VerticalAlignment="Center" />
+                                <TextBox x:Name="WBox" Grid.Row="2" Grid.Column="1" />
+                                <TextBlock Text="{l:T 'H'}" Margin="0,0,4,0" Grid.Row="2" Grid.Column="3" VerticalAlignment="Center" />
+                                <TextBox x:Name="HBox" Grid.Row="2" Grid.Column="4" />
+                            </Grid>
+                            <CheckBox x:Name="EnabledBox" Content="{l:T 'Zone enabled'}" Margin="0,12,0,0" />
+                            <CheckBox x:Name="RepeatBox" Content="{l:T 'Auto-repeat while held'}" />
+                        </StackPanel>
+                        <TextBlock x:Name="NoSelection" Classes="subtle" Text="{l:T 'Select a key on the diagram to change its position and action.'}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <TextBlock Grid.Row="4" x:Name="IssuesText" TextWrapping="Wrap" Margin="0,10,0,0" MaxHeight="72" />
+    </Grid>
+</UserControl>

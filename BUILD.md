@@ -13,45 +13,45 @@
 ## Команды
 
 ```bash
-dotnet restore NumPadFromTouchPad.sln
-dotnet build NumPadFromTouchPad.sln -c Release
-dotnet test tests/NumPad.Core.Tests/NumPad.Core.Tests.csproj -c Release
+dotnet restore OgnelissNumTouch.sln
+dotnet build OgnelissNumTouch.sln -c Release
+dotnet test tests/Ogneliss.NumTouch.Tests/Ogneliss.NumTouch.Tests.csproj -c Release
 
-dotnet run --project src/NumPad.App -c Release                 # запуск
-dotnet run --project src/NumPad.App -c Release -- --minimized  # сразу в трей
-dotnet run --project src/NumPad.App -c Release -- --selftest   # самопроверка UI (код выхода 0 — успех)
+dotnet run --project src/Ogneliss.NumTouch.App -c Release                 # запуск
+dotnet run --project src/Ogneliss.NumTouch.App -c Release -- --minimized  # сразу в трей
+dotnet run --project src/Ogneliss.NumTouch.App -c Release -- --selftest   # самопроверка UI (код выхода 0 — успех)
 ```
 
 ## Релизные сборки
 
 ```bash
-dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=win-x64     # artifacts/win-x64/NumPadFromTouchPad.exe
-dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=win-arm64
-dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=linux-x64   # artifacts/linux-x64/NumPadFromTouchPad
-dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=linux-arm64
-dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=osx-arm64   # затем packaging/macos/make-app.sh osx-arm64
-dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=osx-x64
+dotnet publish src/Ogneliss.NumTouch.App/Ogneliss.NumTouch.App.csproj -p:PublishProfile=win-x64     # artifacts/win-x64/OgnelissNumTouch.exe
+dotnet publish src/Ogneliss.NumTouch.App/Ogneliss.NumTouch.App.csproj -p:PublishProfile=win-arm64
+dotnet publish src/Ogneliss.NumTouch.App/Ogneliss.NumTouch.App.csproj -p:PublishProfile=linux-x64   # artifacts/linux-x64/OgnelissNumTouch
+dotnet publish src/Ogneliss.NumTouch.App/Ogneliss.NumTouch.App.csproj -p:PublishProfile=linux-arm64
+dotnet publish src/Ogneliss.NumTouch.App/Ogneliss.NumTouch.App.csproj -p:PublishProfile=osx-arm64   # затем packaging/macos/make-app.sh osx-arm64
+dotnet publish src/Ogneliss.NumTouch.App/Ogneliss.NumTouch.App.csproj -p:PublishProfile=osx-x64
 ```
 
-Профили: `src/NumPad.App/Properties/PublishProfiles/*.pubxml` — self-contained, single-file, без обрезки.
+Профили: `src/Ogneliss.NumTouch.App/Properties/PublishProfiles/*.pubxml` — self-contained, single-file, без обрезки.
 
 ## Установка
 
-**Windows.** Скопировать `NumPadFromTouchPad-win-x64.exe` в любую папку и запустить. Права администратора не нужны. Подпись для распространения: `signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f cert.pfx NumPadFromTouchPad.exe`.
+**Windows.** Скопировать `OgnelissNumTouch-win-x64.exe` в любую папку и запустить. Права администратора не нужны. Подпись для распространения: `signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f cert.pfx OgnelissNumTouch.exe`.
 
-**Linux.** Распаковать `NumPadFromTouchPad-linux-x64.tar.gz` и выполнить `./install.sh`: программа ставится в `~/.local/bin`, ярлык — в меню; скрипт один раз через `sudo` добавляет пользователя в группу `input` (доступ к тачпаду и клавиатурам) и ставит правило udev для `/dev/uinput`. После этого нужно выйти из системы и войти снова. На GNOME для значка в трее нужно расширение AppIndicator (в Ubuntu включено по умолчанию).
+**Linux.** Распаковать `OgnelissNumTouch-linux-x64.tar.gz` и выполнить `./install.sh`: программа ставится в `~/.local/bin`, ярлык — в меню; скрипт один раз через `sudo` добавляет пользователя в группу `input` (доступ к тачпаду и клавиатурам) и ставит правило udev для `/dev/uinput`. После этого нужно выйти из системы и войти снова. На GNOME для значка в трее нужно расширение AppIndicator (в Ubuntu включено по умолчанию).
 
-**macOS.** Распаковать `NumPadFromTouchPad-osx-arm64.zip`, перенести `.app` в «Программы». Пакет подписан ad-hoc, поэтому первый запуск — через контекстное меню «Открыть». Затем выдать разрешение «Универсальный доступ» (Системные настройки → Конфиденциальность и безопасность) и перезапустить. Для распространения: подпись Developer ID + `xcrun notarytool submit … --wait` + `xcrun stapler staple`. Приватный MultitouchSupport исключает Mac App Store.
+**macOS.** Распаковать `OgnelissNumTouch-osx-arm64.zip`, перенести `.app` в «Программы». Пакет подписан ad-hoc, поэтому первый запуск — через контекстное меню «Открыть». Затем выдать разрешение «Универсальный доступ» (Системные настройки → Конфиденциальность и безопасность) и перезапустить. Для распространения: подпись Developer ID + `xcrun notarytool submit … --wait` + `xcrun stapler staple`. Приватный MultitouchSupport исключает Mac App Store.
 
 ## Удаление
 
 1. «Настройки» → снять «Запускать при входе в систему» → «Сохранить».
 2. Выйти через меню трея или кнопку «Выход».
-3. Удалить программу и папку настроек: Windows `%AppData%\NumPadFromTouchPad`; Linux `~/.config/NumPadFromTouchPad`; macOS — путь показан на странице «Диагностика» (кнопка «Открыть журнал» открывает его подпапку). Linux: при желании удалить `/etc/udev/rules.d/70-numpad-from-touchpad.rules`.
+3. Удалить программу и папку настроек: Windows `%AppData%\OgnelissNumTouch`; Linux `~/.config/OgnelissNumTouch`; macOS — путь показан на странице «Диагностика» (кнопка «Открыть журнал» открывает его подпапку). Linux: при желании удалить `/etc/udev/rules.d/70-ogneliss-numtouch.rules`.
 
 ## Где лежат данные
 
-`settings.json` (настройки, профили устройств, калибровки), `layouts/*.json` (раскладки пользователя), `logs/numpad.log` (технический журнал), `session.lock` и `pending-restore.json` (восстановление после сбоя).
+`settings.json` (настройки, профили устройств, калибровки), `layouts/*.json` (раскладки пользователя), `logs/numtouch.log` (технический журнал), `session.lock` и `pending-restore.json` (восстановление после сбоя).
 
 ## CI
 

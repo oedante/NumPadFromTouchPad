@@ -40,7 +40,7 @@ jobs:
       - name: Build (warnings reported as annotations)
         shell: pwsh
         run: |
-          dotnet build NumPadFromTouchPad.sln -c Release 2>&1 | Tee-Object -FilePath build.log
+          dotnet build OgnelissNumTouch.sln -c Release 2>&1 | Tee-Object -FilePath build.log
           $code = $LASTEXITCODE
           $w = Select-String -Path build.log -Pattern '(error|warning) [A-Z]+[0-9]+' | ForEach-Object { $_.Line.Trim() } | Sort-Object -Unique
           Write-Host "::notice title=Build ${{ matrix.os }}::exit=$code, diagnostics: $($w.Count)"
@@ -50,7 +50,7 @@ jobs:
       - name: Test
         shell: pwsh
         run: |
-          dotnet test tests/NumPad.Core.Tests/NumPad.Core.Tests.csproj -c Release --no-build --logger "trx;LogFileName=t.trx" --results-directory TR 2>&1 | Tee-Object -FilePath test.log
+          dotnet test tests/Ogneliss.NumTouch.Tests/Ogneliss.NumTouch.Tests.csproj -c Release --no-build --logger "trx;LogFileName=t.trx" --results-directory TR 2>&1 | Tee-Object -FilePath test.log
           $code = $LASTEXITCODE
           if (Test-Path TR/t.trx) { [xml]$x = Get-Content TR/t.trx; $c = $x.TestRun.ResultSummary.Counters; Write-Host "::notice title=Tests ${{ matrix.os }}::total=$($c.total) passed=$($c.passed) failed=$($c.failed)" }
           Select-String -Path test.log -Pattern '\[FAIL\]' | Select-Object -First 30 | ForEach-Object { Write-Host "::warning title=Failed test::$($_.Line.Trim())" }
@@ -60,7 +60,7 @@ jobs:
         shell: pwsh
         run: |
           foreach ($rid in "${{ matrix.rids }}".Split(' ')) {
-            dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=$rid
+            dotnet publish src/Ogneliss.NumTouch.App/Ogneliss.NumTouch.App.csproj -p:PublishProfile=$rid
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
@@ -71,20 +71,20 @@ jobs:
       - name: UI self-test (main window + all pages)
         shell: pwsh
         env:
-          NUMPAD_SELFTEST_RESULT: ${{ github.workspace }}/selftest-result.txt
+          NUMTOUCH_SELFTEST_RESULT: ${{ github.workspace }}/selftest-result.txt
         run: |
           $dir = "artifacts/${{ matrix.smoke }}"
-          $exe = if ($IsWindows) { "$dir/NumPadFromTouchPad.exe" } else { "$dir/NumPadFromTouchPad" }
+          $exe = if ($IsWindows) { "$dir/OgnelissNumTouch.exe" } else { "$dir/OgnelissNumTouch" }
           if ($IsLinux) {
             $p = Start-Process xvfb-run -ArgumentList "-a", $exe, "--selftest" -PassThru
           } else {
             $p = Start-Process $exe -ArgumentList "--selftest" -PassThru
           }
           if (-not $p.WaitForExit(120000)) { Stop-Process -Id $p.Id -Force; Write-Host "::error title=Self-test::timeout"; exit 1 }
-          $text = if (Test-Path $env:NUMPAD_SELFTEST_RESULT) { Get-Content $env:NUMPAD_SELFTEST_RESULT -Raw } else { "no result file" }
+          $text = if (Test-Path $env:NUMTOUCH_SELFTEST_RESULT) { Get-Content $env:NUMTOUCH_SELFTEST_RESULT -Raw } else { "no result file" }
           Write-Host "::notice title=Self-test ${{ matrix.os }} (exit $($p.ExitCode))::$($text -replace "`r?`n", ' / ')"
           $roots = @($env:APPDATA, "$HOME/.config", "$HOME/Library/Application Support") | Where-Object { $_ -and (Test-Path $_) }
-          $log = $roots | ForEach-Object { Get-ChildItem -Recurse -Filter numpad.log -Path $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
+          $log = $roots | ForEach-Object { Get-ChildItem -Recurse -Filter numtouch.log -Path $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
           if ($log) { Get-Content $log.FullName | Select-Object -Last 25 | ForEach-Object { Write-Host "::notice title=App log ${{ matrix.os }}::$_" } }
           if ($p.ExitCode -ne 0 -or -not $text.StartsWith("OK")) { exit 1 }
 
@@ -94,20 +94,20 @@ jobs:
           mkdir -p dist
           for rid in ${{ matrix.rids }}; do
             case "$rid" in
-              win-*) cp "artifacts/$rid/NumPadFromTouchPad.exe" "dist/NumPadFromTouchPad-$rid.exe" ;;
+              win-*) cp "artifacts/$rid/OgnelissNumTouch.exe" "dist/OgnelissNumTouch-$rid.exe" ;;
               linux-*)
-                d="dist/NumPadFromTouchPad-$rid"; mkdir -p "$d"
-                cp "artifacts/$rid/NumPadFromTouchPad" packaging/linux/* "$d/"
-                cp src/NumPad.App/Assets/tray_on.png "$d/numpad-from-touchpad.png"
-                tar -C dist -czf "dist/NumPadFromTouchPad-$rid.tar.gz" "NumPadFromTouchPad-$rid"; rm -rf "$d" ;;
-              osx-*) bash packaging/macos/make-app.sh "$rid" && cp "artifacts/NumPadFromTouchPad-$rid.zip" dist/ ;;
+                d="dist/OgnelissNumTouch-$rid"; mkdir -p "$d"
+                cp "artifacts/$rid/OgnelissNumTouch" packaging/linux/* "$d/"
+                cp src/Ogneliss.NumTouch.App/Assets/tray_on.png "$d/ogneliss-numtouch.png"
+                tar -C dist -czf "dist/OgnelissNumTouch-$rid.tar.gz" "OgnelissNumTouch-$rid"; rm -rf "$d" ;;
+              osx-*) bash packaging/macos/make-app.sh "$rid" && cp "artifacts/OgnelissNumTouch-$rid.zip" dist/ ;;
             esac
           done
           ls -la dist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: NumPadFromTouchPad-${{ runner.os }}
+          name: OgnelissNumTouch-${{ runner.os }}
           path: dist/*
 
   release:
@@ -128,4 +128,4 @@ jobs:
         run: |
           ls -la dist
           gh release create "${{ github.event.inputs.release_tag }}" dist/* --target "$GITHUB_SHA" --prerelease \
-            --title "NumPad from TouchPad ${{ github.event.inputs.release_tag }}" --notes-file CHANGELOG.md
+            --title "Ogneliss NumTouch ${{ github.event.inputs.release_tag }}" --notes-file CHANGELOG.md

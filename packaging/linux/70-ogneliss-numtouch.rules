@@ -1,0 +1,3 @@
+# Ogneliss NumTouch: доступ к /dev/uinput для группы input (виртуальная клавиатура и мышь).
+# Чтение тачпада и клавиатур (/dev/input/event*) обычно уже разрешено группе input.
+KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"

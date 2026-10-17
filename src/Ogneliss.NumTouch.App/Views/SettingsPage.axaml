@@ -1,0 +1,109 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:Ogneliss.NumTouch.App.Localization"
+             x:Class="Ogneliss.NumTouch.App.Views.SettingsPage">
+    <ScrollViewer>
+        <StackPanel Margin="28,24,28,24" MaxWidth="860" HorizontalAlignment="Left">
+            <DockPanel Margin="0,0,0,12">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock x:Name="SavedMark" Text="{l:T '✓ Saved'}" Foreground="{StaticResource OnBrush}" VerticalAlignment="Center" IsVisible="False" />
+                    <Button x:Name="SaveButton" Content="{l:T 'Save'}" Classes="primary" />
+                </StackPanel>
+                <TextBlock Classes="title" Text="{l:T 'Settings'}" />
+            </DockPanel>
+
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="section" Text="{l:T 'Hotkey'}" />
+                    <TextBlock Classes="subtle" Text="{l:T 'Click the field and press the shortcut you want (for example, Ctrl+Alt+N).'}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                        <TextBox x:Name="HotkeyBox" Width="240" IsReadOnly="True" FontSize="16" />
+                        <Button x:Name="ApplyHotkeyButton" Content="{l:T 'Assign'}" />
+                        <Button x:Name="DefaultHotkeyButton" Content="{l:T 'Default'}" />
+                    </StackPanel>
+                    <TextBlock x:Name="HotkeyStatus" TextWrapping="Wrap" Margin="0,6,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="section" Text="{l:T 'Key behavior'}" />
+                    <TextBlock Classes="label" Text="{l:T 'When a key fires'}" />
+                    <ComboBox x:Name="TriggerBox" Width="460">
+                        <ComboBoxItem Content="{l:T 'On touch (like a regular key, with hold)'}" Tag="OnTouchDown" />
+                        <ComboBoxItem Content="{l:T 'On finger release (protects against accidental touches)'}" Tag="OnRelease" />
+                    </ComboBox>
+                    <TextBlock Classes="label" Text="{l:T 'If the finger slides onto a neighboring key'}" />
+                    <ComboBox x:Name="SlideBox" Width="460">
+                        <ComboBoxItem Content="{l:T 'Keep holding the original key'}" Tag="KeepKey" />
+                        <ComboBoxItem Content="{l:T 'Release the key'}" Tag="ReleaseOnExit" />
+                    </ComboBox>
+                    <CheckBox x:Name="RepeatBox" Content="{l:T 'Auto-repeat while held'}" Margin="0,12,0,4" />
+                    <Grid ColumnDefinitions="210,260,Auto" RowDefinitions="Auto,Auto" Margin="24,0,0,0">
+                        <TextBlock Text="{l:T 'Delay before repeat'}" VerticalAlignment="Center" />
+                        <Slider x:Name="DelaySlider" Grid.Column="1" Minimum="200" Maximum="1000" TickFrequency="50" IsSnapToTickEnabled="True" />
+                        <TextBlock x:Name="DelayText" Grid.Column="2" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="1" Text="{l:T 'Repeat interval'}" VerticalAlignment="Center" />
+                        <Slider x:Name="IntervalSlider" Grid.Row="1" Grid.Column="1" Minimum="20" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True" />
+                        <TextBlock x:Name="IntervalText" Grid.Row="1" Grid.Column="2" Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </Grid>
+                    <CheckBox x:Name="NumLockBox" Content="{l:T 'Follow Num Lock (when off, digits act as arrows/Home/End, like a real numpad)'}" />
+                    <CheckBox x:Name="PalmBox" Content="{l:T 'Ignore palm touches (as reported by the device)'}" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="section" Text="{l:T 'Cursor and gestures in NumPad mode'}" />
+                    <ComboBox x:Name="SuppressBox" Width="560">
+                        <ComboBoxItem Content="{l:T 'Block the cursor while a finger is on the keys (recommended)'}" Tag="WhileTouching" />
+                        <ComboBoxItem Content="{l:T 'Block the cursor the whole time NumPad is on'}" Tag="AllWhileNumPad" />
+                        <ComboBoxItem Content="{l:T 'Do not block the cursor'}" Tag="None" />
+                    </ComboBox>
+                    <TextBlock x:Name="SuppressNote" Classes="subtle" FontSize="12" Margin="0,4,0,0" />
+                    <Grid ColumnDefinitions="210,260,Auto" Margin="0,8,0,0">
+                        <TextBlock Text="{l:T 'Keep blocking after lift'}" VerticalAlignment="Center" />
+                        <Slider x:Name="TailSlider" Grid.Column="1" Minimum="0" Maximum="1000" TickFrequency="50" IsSnapToTickEnabled="True" />
+                        <TextBlock x:Name="TailText" Grid.Column="2" Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </Grid>
+                    <CheckBox x:Name="GesturesBox" Content="{l:T 'Turn off touchpad taps and scrolling in the OS while NumPad mode is on'}" Margin="0,10,0,0" />
+                    <TextBlock x:Name="GesturesNote" Classes="subtle" FontSize="12" Margin="28,0,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="section" Text="{l:T 'Interface'}" />
+                    <Grid ColumnDefinitions="210,Auto">
+                        <TextBlock Text="{l:T 'Language'}" VerticalAlignment="Center" />
+                        <ComboBox x:Name="LanguageBox" Grid.Column="1" Width="250" />
+                    </Grid>
+                    <CheckBox x:Name="NotificationsBox" Content="{l:T 'Show a notification when the mode changes'}" Margin="0,10,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="section" Text="{l:T 'Startup and window'}" />
+                    <CheckBox x:Name="AutostartBox" Content="{l:T 'Start when I sign in'}" />
+                    <CheckBox x:Name="MinimizedBox" Content="{l:T 'Start minimized to the tray'}" />
+                    <CheckBox x:Name="CloseToTrayBox" Content="{l:T 'Closing the window minimizes the program to the tray'}" />
+                    <CheckBox x:Name="RestoreModeBox" Content="{l:T 'Restore NumPad mode on startup'}" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="section" Text="{l:T 'Diagnostics and reset'}" />
+                    <CheckBox x:Name="LogBox" Content="{l:T 'Keep a technical log (pressed keys are never recorded)'}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+                        <Button x:Name="OpenFolderButton" Content="{l:T 'Open settings folder'}" />
+                        <Button x:Name="ResetButton" Content="{l:T 'Reset settings'}" Classes="danger" />
+                    </StackPanel>
+                    <TextBlock Classes="subtle" FontSize="12" Margin="0,8,0,0"
+                               Text="{l:T 'Reset restores the default parameters. Layouts and device calibrations are kept.'}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

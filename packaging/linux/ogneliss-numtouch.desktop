@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Ogneliss NumTouch
+Comment=Тачпад как цифровой блок клавиатуры
+Exec=ogneliss-numtouch
+Icon=ogneliss-numtouch
+Terminal=false
+Categories=Utility;Accessibility;
