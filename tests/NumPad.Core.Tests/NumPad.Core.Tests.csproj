@@ -7,10 +7,12 @@
     <LangVersion>latest</LangVersion>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- Тесты вызывают чистые функции платформенных сборок (без системных вызовов) на любой ОС. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Тестовая инфраструктура: стандартный стек xUnit для .NET 8. -->
+    <!-- Тестовая инфраструктура: стандартный стек xUnit. -->
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
@@ -21,6 +23,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\NumPad.Core\NumPad.Core.csproj" />
+    <ProjectReference Include="..\..\src\NumPad.Platform\NumPad.Platform.csproj" />
+    <ProjectReference Include="..\..\src\NumPad.Platform.Linux\NumPad.Platform.Linux.csproj" />
+    <ProjectReference Include="..\..\src\NumPad.Platform.Windows\NumPad.Platform.Windows.csproj" />
   </ItemGroup>
 
   <ItemGroup>
