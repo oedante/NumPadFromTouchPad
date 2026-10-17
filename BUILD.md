@@ -33,15 +33,17 @@ dotnet publish src/Ogneliss.NumTouch.App/Ogneliss.NumTouch.App.csproj -p:Publish
 dotnet publish src/Ogneliss.NumTouch.App/Ogneliss.NumTouch.App.csproj -p:PublishProfile=osx-x64
 ```
 
-Профили: `src/Ogneliss.NumTouch.App/Properties/PublishProfiles/*.pubxml` — self-contained, single-file, без обрезки.
+Профили: `src/Ogneliss.NumTouch.App/Properties/PublishProfiles/*.pubxml` — self-contained, single-file, без обрезки. Для macOS нативные библиотеки остаются рядом с программой (их нужно подписывать по отдельности).
+
+Пакет MSIX для Microsoft Store: `pwsh packaging/windows/make-msix.ps1 -Rid win-x64` (после публикации win-x64). Подпись и нотаризация — в [DISTRIBUTION.md](DISTRIBUTION.md).
 
 ## Установка
 
-**Windows.** Скопировать `OgnelissNumTouch-win-x64.exe` в любую папку и запустить. Права администратора не нужны. Подпись для распространения: `signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f cert.pfx OgnelissNumTouch.exe`.
+**Windows.** Скопировать `OgnelissNumTouch-win-x64.exe` в любую папку и запустить. Права администратора не нужны. Варианты подписи — [DISTRIBUTION.md](DISTRIBUTION.md).
 
 **Linux.** Распаковать `OgnelissNumTouch-linux-x64.tar.gz` и выполнить `./install.sh`: программа ставится в `~/.local/bin`, ярлык — в меню; скрипт один раз через `sudo` добавляет пользователя в группу `input` (доступ к тачпаду и клавиатурам) и ставит правило udev для `/dev/uinput`. После этого нужно выйти из системы и войти снова. На GNOME для значка в трее нужно расширение AppIndicator (в Ubuntu включено по умолчанию).
 
-**macOS.** Распаковать `OgnelissNumTouch-osx-arm64.zip`, перенести `.app` в «Программы». Пакет подписан ad-hoc, поэтому первый запуск — через контекстное меню «Открыть». Затем выдать разрешение «Универсальный доступ» (Системные настройки → Конфиденциальность и безопасность) и перезапустить. Для распространения: подпись Developer ID + `xcrun notarytool submit … --wait` + `xcrun stapler staple`. Приватный MultitouchSupport исключает Mac App Store.
+**macOS.** Распаковать `OgnelissNumTouch-osx-arm64.zip`, перенести `.app` в «Программы». Сборка без секретов подписана ad-hoc, поэтому первый запуск — через контекстное меню «Открыть»; сборка из `main` с настроенными секретами подписана Developer ID и нотаризована. Затем выдать разрешение «Универсальный доступ» (Системные настройки → Конфиденциальность и безопасность) и перезапустить. Приватный MultitouchSupport исключает Mac App Store.
 
 ## Удаление
 
@@ -53,6 +55,12 @@ dotnet publish src/Ogneliss.NumTouch.App/Ogneliss.NumTouch.App.csproj -p:Publish
 
 `settings.json` (настройки, профили устройств, калибровки), `layouts/*.json` (раскладки пользователя), `logs/numtouch.log` (технический журнал), `session.lock` и `pending-restore.json` (восстановление после сбоя).
 
+При первом запуске после переименования `settings.json` и `layouts/*.json` копируются из папки прежней версии (`…/NumPadFromTouchPad`); старая папка не изменяется. Записи автозапуска старой версии удаляются и при включённом автозапуске создаются заново.
+
+## Локализация
+
+Ключ перевода — английский текст: `L.T("Save")`, `L.F("Point {0} of {1}", a, b)`, в XAML — `{l:T 'Save'}`. Русский перевод — `src/Ogneliss.NumTouch.Core/Localization/RussianStrings.cs`. Тест `LocalizationTests` находит все ключи в исходниках и не пропустит строку без перевода, перевод без использования, несовпадение `{0}` или русский текст, оставшийся прямо в коде или XAML. Добавить язык: новая таблица + пункт в `UiLanguage` и в списке языков на странице настроек. Журнал пишется по-английски независимо от языка интерфейса.
+
 ## CI
 
-`.github/workflows/build.yml` — матрица Windows / Ubuntu / macOS: сборка решения (предупреждения выводятся аннотациями), тесты, публикация двух архитектур, UI-самопроверка `--selftest` (на Linux — под Xvfb), упаковка (`.exe`, `.tar.gz` с install.sh, `.app.zip`). Ручной запуск с параметром `release_tag` создаёт pre-release со всеми пакетами.
+`.github/workflows/build.yml` — матрица Windows / Ubuntu / macOS: сборка решения (предупреждения выводятся аннотациями), тесты, публикация двух архитектур, UI-самопроверка `--selftest` (на Linux — под Xvfb), упаковка (`.exe`, `.tar.gz` с install.sh, `.app.zip`, `.msix` для Store — отдельный артефакт `store-msix`). На ветке `main` при заданных секретах — подпись Windows (Azure Artifact Signing), подпись Developer ID и нотаризация macOS (см. [DISTRIBUTION.md](DISTRIBUTION.md)). Самопроверка открывает все страницы на обоих языках и показывает уведомление о смене режима. Ручной запуск с параметром `release_tag` создаёт pre-release со всеми пакетами и `SHA256SUMS.txt`.

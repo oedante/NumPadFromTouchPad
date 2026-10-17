@@ -35,10 +35,12 @@ jobs:
       contents: read
       id-token: write   # вход в Azure по OIDC для подписи Windows (используется, только если подпись настроена)
     env:
-      # Подпись включается сама, когда в репозитории заданы секреты/переменные (см. DISTRIBUTION.md).
-      WIN_SIGN: ${{ vars.AZURE_SIGNING_ACCOUNT != '' }}
-      MAC_SIGN: ${{ secrets.MACOS_CERT_P12 != '' }}
-      MAC_NOTARIZE: ${{ secrets.MACOS_CERT_P12 != '' && (secrets.AC_PASSWORD != '' || secrets.AC_API_KEY_P8 != '') }}
+      # Подпись включается сама, когда в репозитории заданы секреты/переменные (см. DISTRIBUTION.md),
+      # и только для ветки main (релизы запускаются из неё): федеративные учётные данные Azure выдаются на main,
+      # а нотаризация занимает минуты — на рабочих ветках она не нужна.
+      WIN_SIGN: ${{ vars.AZURE_SIGNING_ACCOUNT != '' && github.ref == 'refs/heads/main' }}
+      MAC_SIGN: ${{ secrets.MACOS_CERT_P12 != '' && github.ref == 'refs/heads/main' }}
+      MAC_NOTARIZE: ${{ secrets.MACOS_CERT_P12 != '' && (secrets.AC_PASSWORD != '' || secrets.AC_API_KEY_P8 != '') && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -169,7 +171,7 @@ jobs:
       - name: Package
         shell: bash
         env:
-          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          MACOS_SIGN_IDENTITY: ${{ github.ref == 'refs/heads/main' && secrets.MACOS_SIGN_IDENTITY || '' }}
           AC_APPLE_ID: ${{ secrets.AC_APPLE_ID }}
           AC_TEAM_ID: ${{ secrets.AC_TEAM_ID }}
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
@@ -227,6 +229,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ls -la dist
+          (cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
           gh release create "${{ github.event.inputs.release_tag }}" dist/* --target "$GITHUB_SHA" --prerelease \
             --title "Ogneliss NumTouch ${{ github.event.inputs.release_tag }}" --notes-file CHANGELOG.md

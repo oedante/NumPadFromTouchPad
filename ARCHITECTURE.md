@@ -15,9 +15,9 @@ OgnelissNumTouch.sln
 ├─ src/Ogneliss.NumTouch.Platform.Windows  — Raw Input (PTP), SendInput, RegisterHotKey, WH_MOUSE_LL, SPI тачпада, реестр
 ├─ src/Ogneliss.NumTouch.Platform.Linux    — evdev (тачпад, клавиатуры), uinput (клавиши, курсор), EVIOCGRAB, XDG autostart
 ├─ src/Ogneliss.NumTouch.Platform.MacOS    — MultitouchSupport, CGEvent, Carbon hotkey, CGEventTap, LaunchAgent (прототип)
-├─ src/Ogneliss.NumTouch.App               — Avalonia: окно, 5 страниц, трей, контроллер
-├─ tests/Ogneliss.NumTouch.Tests      — xUnit: ядро + платформенная логика без ввода-вывода (на всех 3 ОС в CI)
-└─ packaging/                   — linux: udev-правило, .desktop, install.sh; macos: сборка .app
+├─ src/Ogneliss.NumTouch.App               — Avalonia: окно, 5 страниц, трей, уведомление о смене режима, контроллер
+├─ tests/Ogneliss.NumTouch.Tests           — xUnit: ядро, платформенная логика без ввода-вывода, полнота перевода (на 3 ОС в CI)
+└─ packaging/                              — linux: udev-правило, .desktop, install.sh; macos: .app, подпись, нотаризация; windows: MSIX
 ```
 
 ## Интерфейсы платформы (`Ogneliss.NumTouch.Platform/Abstractions.cs`)
@@ -54,6 +54,14 @@ DispatcherTimer 10 мс ─► Engine.Tick (автоповтор, сторож, 
 ## Координаты
 
 Устройство: 0..1 по логическому диапазону (Y вниз). Наклейка: 0..1 области; калибровка — аффинное преобразование (6 параметров, МНК по 5 опорным клавишам) или ручной прямоугольник.
+
+## Локализация
+
+`Ogneliss.NumTouch.Core.Localization.L`: ключ — английский текст (`L.T`, `L.F` с `{0}`, `L.N` — пометка ключа без перевода для данных вроде названий клавиш), русская таблица `RussianStrings`; XAML — расширение разметки `{l:T '…'}` (значение берётся при загрузке). Язык — `AppSettings.Language` (Auto/English/Russian; Auto — русский для русской локали системы). При смене языка `L.Changed` → приложение перестраивает главное окно на той же странице и обновляет меню трея; встроенные раскладки пересоздаются с названиями на новом языке. Журнал — всегда английский.
+
+## Уведомление о смене режима
+
+`ModeNotifier` подписан на `AppController.ModeChanged` и показывает `OsdWindow` — окно без рамки, поверх остальных, `ShowActivated=false`, без кнопки в панели задач, внизу по центру рабочей области основного экрана; скрывается через 1,8 с или по щелчку. Своё окно вместо системных уведомлений: одинаково на трёх ОС, без разрешений и без записей в центре уведомлений. Ошибка оконной системы при показе только пишется в журнал.
 
 ## Сознательно не делаем
 

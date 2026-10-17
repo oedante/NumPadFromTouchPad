@@ -13,6 +13,8 @@ short="${version%%-*}"
 rm -rf "$app"; mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp -R "$src/." "$app/Contents/MacOS/"
 cp "$root/src/Ogneliss.NumTouch.App/Assets/tray_on.png" "$app/Contents/Resources/"
+# В Contents/MacOS должен быть только код (Mach-O): символы отладки библиотек проекта не нужны и мешают подписи.
+find "$app/Contents/MacOS" -name "*.pdb" -delete
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

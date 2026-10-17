@@ -1,44 +1,58 @@
 # Ogneliss NumTouch
 
-Превращает тачпад ноутбука в цифровой блок. На тачпад наклеивается наклейка с клавишами; по горячей клавише тачпад переключается в режим NumPad, и касания областей наклейки становятся настоящими нажатиями клавиш — `7`, `Enter`, `Delete`, `Print Screen`, стрелки, сочетания вроде `Ctrl+C` или любой текст.
+**English** · [Русский](README.ru.md)
 
-Программа не рисует клавиатуру на экране: она читает реальные касания физического тачпада и генерирует системные клавиатурные события.
+Turns a laptop touchpad into a numeric keypad. You put a sticker with keys on the touchpad, press a hotkey, and touches on the sticker become real keypresses — `7`, `Enter`, `Delete`, `Print Screen`, arrows, shortcuts such as `Ctrl+C`, or any text.
 
-## Платформы
+The program does not draw a keyboard on the screen: it reads real touches from the physical touchpad and sends system keyboard events.
 
-| ОС | Статус | Требования |
+> Formerly *NumPad from TouchPad*. Settings and layouts of the old version are transferred automatically on first start.
+
+## Platforms
+
+| OS | Status | Requirements |
 |---|---|---|
-| **Windows 10 1809+ / 11** (x64, ARM64) | основная; собирается и проходит самопроверку в CI, **на реальном тачпаде не проверялась** | Precision Touchpad (почти все ноутбуки последних лет) |
-| **Linux** (x64, ARM64; X11 и Wayland) | собирается и проходит самопроверку в CI, на реальном тачпаде не проверялась | любой тачпад с мультитачем; группа `input` и правило udev (ставит `install.sh`) |
-| **macOS 12+** (Apple Silicon, Intel) | прототип: собирается и запускается в CI, на MacBook не проверялся | разрешение «Универсальный доступ» |
+| **Windows 10 1809+ / 11** (x64, ARM64) | primary; builds and passes the UI self-test in CI, **not yet tested on a real touchpad** | Precision Touchpad (almost every recent laptop) |
+| **Linux** (x64, ARM64; X11 and Wayland) | builds and passes the UI self-test in CI, not yet tested on a real touchpad | any multitouch touchpad; `input` group and a udev rule (installed by `install.sh`) |
+| **macOS 12+** (Apple Silicon, Intel) | prototype: builds and starts in CI, not tested on a MacBook | Accessibility permission |
 
-## Быстрый старт
+## Installation
 
-1. Установите и запустите программу (см. `BUILD.md` → «Установка»). Значок появится в трее.
-2. На главном экране выберите раскладку: **NUM10** (цифровой блок справа, слева — обычный трекпад), **NUM20** (полный блок с навигацией и стрелками) или **NUM30** (вместо стрелок — клавиши действий).
-3. При необходимости настройте раскладку на экране **«Раскладки»**: перетаскивайте клавиши мышью, меняйте размер за угол, задавайте подпись и действие каждой клавиши.
-4. Наклейте наклейку и пройдите **«Калибровку»**: коснитесь пяти подсвеченных клавиш, проверьте результат и сохраните.
-5. Нажмите **Ctrl+Alt+N**: тачпад работает как цифровой блок. Ещё раз — обычный тачпад.
+Download the file for your system from [Releases](../../releases).
 
-## Возможности
+- **Windows:** `OgnelissNumTouch-win-x64.exe` (or `-win-arm64`). No installer and no admin rights needed. If the build is not signed, Windows SmartScreen shows “Windows protected your PC” on first start: click **More info → Run anyway**.
+- **Linux:** unpack `OgnelissNumTouch-linux-x64.tar.gz` and run `./install.sh`. It installs the program to `~/.local/bin`, adds a menu entry and, once via `sudo`, adds you to the `input` group and installs a udev rule for `/dev/uinput`. Log out and back in afterwards.
+- **macOS:** unpack `OgnelissNumTouch-osx-arm64.zip` (Apple Silicon) or `-osx-x64.zip` (Intel) and move the app to Applications. Grant **Accessibility** permission (System Settings → Privacy & Security) and restart the app. An unsigned build has to be opened the first time via right-click → **Open**.
 
-- **Редактор раскладок:** перемещение и размер клавиш мышью или числами, привязка к сетке, промежутки, пропорции наклейки; назначение — клавиша (цифровой блок, навигация, F1–F24, буквы, модификаторы, мультимедиа), сочетание, ввод текста или пустая зона; подписи; отключение зон; автоповтор; отмена/повтор; импорт/экспорт; возврат к стандартным; проверка ошибок; касания тачпада видны поверх схемы ещё до сохранения.
-- **Калибровка:** пять опорных клавиш → положение, масштаб и наклон наклейки; проверка «вхолостую»; ручные границы; отдельный профиль для каждого тачпада.
-- Удержание, автоповтор, несколько пальцев одновременно, Shift/Ctrl на тачпаде.
-- Настоящие клавиши цифрового блока (`Num 7`, `Num Enter`…), а не цифры основного ряда.
-- В режиме NumPad курсор не прыгает, пока палец на клавишах (в Linux тачпад захватывается целиком, а «зона трекпада» NUM10 продолжает двигать курсор).
-- Режим выключается при блокировке и сне (Windows); ни одна клавиша не остаётся «зажатой».
+## Quick start
 
-## Ограничения
+1. Start the program; its icon appears in the tray (menu bar on macOS).
+2. On the **Home** page pick a layout: **NUM10** (numpad on the right, regular trackpad on the left), **NUM20** (full block with navigation and arrows) or **NUM30** (action keys instead of arrows).
+3. Adjust the layout on the **Layouts** page if needed: drag keys with the mouse, resize by the corner, set the label and action of each key.
+4. Apply the sticker and run **Calibration**: touch the five highlighted keys, check the result and save.
+5. Press **Ctrl+Alt+N**: the touchpad works as a numpad, and a short on-screen notification confirms the mode. Press again to get the regular touchpad back.
 
-- Windows: старые тачпады без Precision Touchpad координаты касаний не отдают; нажатия не доходят до окон, запущенных от администратора (UIPI); `Ctrl+Alt+Del` сгенерировать нельзя; во время касания тачпада на мгновение блокируется и внешняя мышь.
-- Linux: горячая клавиша не перехватывается (её получит и активная программа); ввод текста ограничен символами US-раскладки; нужны права группы `input`.
-- macOS: приватный API MultitouchSupport — вне Mac App Store, может сломаться в новых версиях macOS; Print Screen и клавиш запуска приложений нет.
+## Features
 
-## Конфиденциальность
+- **Layout editor:** move and resize keys with the mouse or numerically, snap to grid, gaps, sticker aspect ratio; actions — a key (numpad, navigation, F1–F24, letters, modifiers, media), a shortcut, typing text, or an empty zone; labels; disabled zones; auto-repeat; undo/redo; import/export; restore defaults; error checking; live touchpad contacts drawn over the diagram before saving.
+- **Calibration:** five reference keys give the position, scale and tilt of the sticker; dry-run check; manual bounds; a separate profile for each touchpad.
+- Hold, auto-repeat, several fingers at once, Shift/Ctrl on the touchpad.
+- Real numpad keys (`Num 7`, `Num Enter`…), not the digits of the main row.
+- In NumPad mode the cursor does not jump while a finger is on the keys (on Linux the touchpad is grabbed entirely, while the NUM10 trackpad zone keeps moving the cursor).
+- On-screen notification when the mode changes (can be turned off in Settings).
+- English and Russian interface; the language follows the system or is chosen in Settings.
+- The mode turns off on lock and sleep (Windows); no key is ever left “stuck”.
 
-Работает офлайн. Журнал содержит только технические события; нажимаемые клавиши, введённый текст и координаты касаний не записываются.
+## Limitations
 
-## Для разработчиков
+- Windows: older touchpads without Precision Touchpad do not provide touch coordinates; keypresses do not reach windows running as administrator (UIPI); `Ctrl+Alt+Del` cannot be generated; an external mouse is briefly blocked while the touchpad is touched.
+- Linux: the hotkey is not intercepted (the active program receives it too); text input is limited to US-layout characters; `input` group membership is required.
+- macOS: uses the private MultitouchSupport API, so the app cannot be in the Mac App Store and may break in future macOS versions; there is no Print Screen or app-launch keys.
 
-`BUILD.md` — сборка; `ARCHITECTURE.md` — устройство; `PLATFORM_FEASIBILITY.md` — возможности платформ; `TESTING.md` — тесты и статус проверок; `AUDIT.md` — аудит исходных проектов; `CHANGELOG.md` — изменения.
+## Privacy
+
+Works offline. The log contains technical events only; pressed keys, typed text and touch coordinates are never recorded.
+
+## For developers
+
+[BUILD.md](BUILD.md) — building; [DISTRIBUTION.md](DISTRIBUTION.md) — signing and publishing per platform; [ARCHITECTURE.md](ARCHITECTURE.md) — design; [PLATFORM_FEASIBILITY.md](PLATFORM_FEASIBILITY.md) — platform capabilities; [TESTING.md](TESTING.md) — tests and verification status; [CHANGELOG.md](CHANGELOG.md) — changes. Developer documentation is in Russian.
