@@ -27,6 +27,9 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+    <!-- Транзитивная зависимость Avalonia (D-Bus на Linux: трей, меню). 0.20.0 уязвима (GHSA-xrw6-gwf8-vvr9),
+         исправление перенесено в 0.21.3. -->
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
   </ItemGroup>
 
   <ItemGroup>

@@ -83,7 +83,8 @@ jobs:
           if (-not $p.WaitForExit(120000)) { Stop-Process -Id $p.Id -Force; Write-Host "::error title=Self-test::timeout"; exit 1 }
           $text = if (Test-Path $env:NUMPAD_SELFTEST_RESULT) { Get-Content $env:NUMPAD_SELFTEST_RESULT -Raw } else { "no result file" }
           Write-Host "::notice title=Self-test ${{ matrix.os }} (exit $($p.ExitCode))::$($text -replace "`r?`n", ' / ')"
-          $log = Get-ChildItem -Recurse -Filter numpad.log -Path @($env:APPDATA, "$HOME/.config", "$HOME/Library") -ErrorAction SilentlyContinue | Select-Object -First 1
+          $roots = @($env:APPDATA, "$HOME/.config", "$HOME/Library/Application Support") | Where-Object { $_ -and (Test-Path $_) }
+          $log = $roots | ForEach-Object { Get-ChildItem -Recurse -Filter numpad.log -Path $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
           if ($log) { Get-Content $log.FullName | Select-Object -Last 25 | ForEach-Object { Write-Host "::notice title=App log ${{ matrix.os }}::$_" } }
           if ($p.ExitCode -ne 0 -or -not $text.StartsWith("OK")) { exit 1 }
 

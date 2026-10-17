@@ -31,7 +31,7 @@ public partial class MainWindow : Window
         foreach (var b in Nav.Children.OfType<Button>())
             b.Click += async (_, _) => await NavigateAsync((string)b.Tag!);
         ExitButton.Click += (_, _) => (Avalonia.Application.Current as App)?.ExitApplication();
-        if (_app is null) return;
+        if (app is null) return;
         _app.StateChanged += UpdateStatus;
         Closed += (_, _) =>
         {
