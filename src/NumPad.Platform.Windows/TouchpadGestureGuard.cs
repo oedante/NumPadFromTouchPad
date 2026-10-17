@@ -2,16 +2,16 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using NumPad.Core.Config;
 using NumPad.Core.Diagnostics;
-using static NumPad.App.Platform.NativeMethods;
+using static NumPad.Platform.Windows.NativeMethods;
 
-namespace NumPad.App.Platform;
+namespace NumPad.Platform.Windows;
 
 /// <summary>
 /// Отключение тапов и жестов тачпада на время режима NumPad (SPI_SETTOUCHPADPARAMETERS, Windows 11 24H2+).
 /// Исходные значения записываются в pending-restore.json ДО изменения и восстанавливаются при выходе из режима,
 /// при завершении и при следующем запуске после сбоя. На более старых Windows — тихо недоступно.
 /// </summary>
-public sealed class TouchpadGestureGuard
+internal sealed class TouchpadGestureGuard : IGestureGuard
 {
     // userFlags: bit2 tap, bit3 tapAndDrag, bit4 twoFingerTap, bit7 pan, bit8 zoom
     private const uint GestureMask = (1u << 2) | (1u << 3) | (1u << 4) | (1u << 7) | (1u << 8);
@@ -41,7 +41,8 @@ public sealed class TouchpadGestureGuard
     }
 
     /// <summary>Доступно ли управление параметрами тачпада (Windows 11 24H2+ и PTP).</summary>
-    public static bool IsSupported => TryGet(out var p) && (p.systemFlags & 1) != 0;
+    public static bool SupportedOnThisSystem => TryGet(out var p) && (p.systemFlags & 1) != 0;
+    public bool IsSupported => SupportedOnThisSystem;
 
     /// <summary>Есть ли тачпад, который Windows считает «устаревшим» (не PTP) — для понятного сообщения.</summary>
     public static bool LegacyTouchpadPresent => TryGet(out var p) && (p.systemFlags & 2) != 0;

@@ -1,11 +1,7 @@
 using System.Runtime.InteropServices;
-using NumPad.App.Platform;
-using static NumPad.App.Platform.NativeMethods;
+using static NumPad.Platform.Windows.NativeMethods;
 
-namespace NumPad.App.Input;
-
-/// <summary>Сырые данные одного слота контакта из HID-отчёта (до нормализации).</summary>
-internal readonly record struct RawSlot(int ContactId, double X, double Y, bool Tip, bool Confidence);
+namespace NumPad.Platform.Windows;
 
 internal sealed record AxisInfo(int LogicalMin, int LogicalMax, double? PhysicalMm);
 
@@ -193,7 +189,7 @@ internal sealed class HidReportParser : IDisposable
     }
 
     /// <summary>Разбор одного входного отчёта. Возвращает false, если отчёт не относится к касаниям (другой Report ID).</summary>
-    public bool TryParse(IntPtr report, uint length, List<RawSlot> slotsOut, out int? contactCount)
+    public bool TryParse(IntPtr report, uint length, List<HidSlot> slotsOut, out int? contactCount)
     {
         slotsOut.Clear();
         contactCount = null;
@@ -233,7 +229,7 @@ internal sealed class HidReportParser : IDisposable
 
             double nx = Normalize(rx, s.XMin, s.XMax);
             double ny = Normalize(ry, s.YMin, s.YMax);
-            slotsOut.Add(new RawSlot((int)id, nx, ny, tip, confidence));
+            slotsOut.Add(new HidSlot((int)id, nx, ny, tip, confidence));
             any = true;
         }
         return any || contactCount is not null;

@@ -1,41 +1,17 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using NumPad.Core.Diagnostics;
 using NumPad.Core.Engine;
-using static NumPad.App.Platform.NativeMethods;
+using static NumPad.Platform.Windows.NativeMethods;
 
-namespace NumPad.App.Input;
-
-public sealed record TouchpadDeviceInfo(
-    IntPtr Handle,
-    string DeviceKey,
-    string DisplayName,
-    string DevicePath,
-    int VendorId,
-    int ProductId,
-    int MaxContacts,
-    int LogicalWidth,
-    int LogicalHeight,
-    double? WidthMm,
-    double? HeightMm,
-    string? ParserError)
-{
-    public bool IsUsable => ParserError is null;
-    /// <summary>Соотношение сторон поверхности: по физическим размерам, иначе по логическим диапазонам.</summary>
-    public double AspectRatio => WidthMm is > 0 && HeightMm is > 0 ? WidthMm.Value / HeightMm.Value
-        : LogicalHeight > 0 ? (double)LogicalWidth / LogicalHeight : 1.6;
-    public bool AspectIsPhysical => WidthMm is > 0 && HeightMm is > 0;
-}
+namespace NumPad.Platform.Windows;
 
 /// <summary>
 /// Touchpad Input Backend для Windows: Raw Input по HID-коллекции Precision Touchpad (0x0D/0x05).
-/// Собирает кадры из отчётов (параллельный и гибридный режимы PTP), нормализует координаты,
-/// следит за подключением/отключением устройств (RIDEV_DEVNOTIFY).
-/// Все методы вызываются из UI-потока (WM_INPUT приходит в окно этого потока).
+/// Работает в потоке ввода (<see cref="InputThread"/>); события <see cref="FrameReceived"/> приходят оттуда же.
 /// </summary>
-public sealed class PrecisionTouchpad : ITouchSource, IDisposable
+internal sealed class PrecisionTouchpad : ITouchpadBackend
 {
     private const ushort UsagePageDigitizer = 0x0D;
     private const ushort UsageTouchPad = 0x05;
@@ -44,77 +20,90 @@ public sealed class PrecisionTouchpad : ITouchSource, IDisposable
     {
         public required TouchpadDeviceInfo Info;
         public HidReportParser? Parser;
-        // Сборка кадра (гибридный режим: Contact Count только в первом отчёте кадра).
-        public int Expected;
-        public readonly List<TouchContact> Pending = new();
+        public readonly HidFrameAssembler Assembler = new();
         public void Dispose() => Parser?.Dispose();
     }
 
+    private readonly InputThread _input;
     private readonly ILog _log;
-    private readonly Dictionary<IntPtr, DeviceState> _devices = new();
-    private readonly List<RawSlot> _slotBuffer = new();
-    private readonly Stopwatch _clock;
+    private readonly Dictionary<IntPtr, DeviceState> _devices = new(); // только поток ввода
+    private volatile TouchpadDeviceInfo[] _snapshot = Array.Empty<TouchpadDeviceInfo>();
+    private readonly List<HidSlot> _slotBuffer = new();
     private IntPtr _buffer = IntPtr.Zero;
     private uint _bufferSize;
-    private IntPtr _hwnd;
     private bool _registered;
+    private long _reports, _errors;
 
-    public PrecisionTouchpad(ILog log, Stopwatch clock)
+    public PrecisionTouchpad(InputThread input, ILog log)
     {
+        _input = input;
         _log = log;
-        _clock = clock;
     }
 
-    public event Action<TouchFrame>? FrameReceived;
-    /// <summary>Источник кадра (устройство) — для выбора профиля калибровки.</summary>
-    public event Action<TouchpadDeviceInfo, TouchFrame>? DeviceFrameReceived;
+    public string Mechanism => "Windows Precision Touchpad (Raw Input)";
+    public IReadOnlyList<TouchpadDeviceInfo> Devices => _snapshot;
+    public string? UnavailableReason { get; private set; }
+    public long ReportsReceived => Interlocked.Read(ref _reports);
+    public long ParseErrors => Interlocked.Read(ref _errors);
+
+    public event Action<TouchpadDeviceInfo, TouchFrame>? FrameReceived;
     public event Action? DevicesChanged;
     public event Action<TouchpadDeviceInfo>? DeviceRemoved;
 
-    public bool IsRegistered => _registered;
-    public IReadOnlyList<TouchpadDeviceInfo> Devices => _devices.Values.Select(d => d.Info).ToList();
-    public long ReportsReceived { get; private set; }
-    public long ParseErrors { get; private set; }
-
-    // ---------------------------------------------------------------- registration
-
-    public bool Register(IntPtr hwnd, out string error)
+    public bool Start(out string? error)
     {
-        error = "";
-        _hwnd = hwnd;
-        var dev = new[]
+        string? err = null;
+        bool ok = _input.Invoke(() =>
         {
-            new RAWINPUTDEVICE
+            var dev = new[]
             {
-                usUsagePage = UsagePageDigitizer, usUsage = UsageTouchPad,
-                dwFlags = RIDEV_INPUTSINK | RIDEV_DEVNOTIFY, // фоновый приём + уведомления о (dis)connect
-                hwndTarget = hwnd,
-            },
-        };
-        if (!RegisterRawInputDevices(dev, 1, (uint)Marshal.SizeOf<RAWINPUTDEVICE>()))
-        {
-            int err = Marshal.GetLastWin32Error();
-            error = $"RegisterRawInputDevices: ошибка {err}";
-            _log.Error(error);
-            return false;
-        }
-        _registered = true;
-        RefreshDevices();
-        return true;
+                new RAWINPUTDEVICE
+                {
+                    usUsagePage = UsagePageDigitizer, usUsage = UsageTouchPad,
+                    dwFlags = RIDEV_INPUTSINK | RIDEV_DEVNOTIFY, // фоновый приём + уведомления о подключении
+                    hwndTarget = _input.Handle,
+                },
+            };
+            if (!RegisterRawInputDevices(dev, 1, (uint)Marshal.SizeOf<RAWINPUTDEVICE>()))
+            {
+                err = $"RegisterRawInputDevices: ошибка {Marshal.GetLastWin32Error()}";
+                return false;
+            }
+            _registered = true;
+            RefreshDevicesCore();
+            return true;
+        });
+        error = err;
+        if (!ok) _log.Error(err ?? "Raw Input");
+        return ok;
     }
 
-    public void Unregister()
+    public void RefreshDevices() => _input.Post(RefreshDevicesCore);
+
+    /// <summary>Обработка сообщений окна потока ввода.</summary>
+    public bool HandleMessage(int msg, IntPtr wParam, IntPtr lParam)
     {
-        if (!_registered) return;
-        var dev = new[] { new RAWINPUTDEVICE { usUsagePage = UsagePageDigitizer, usUsage = UsageTouchPad, dwFlags = RIDEV_REMOVE, hwndTarget = IntPtr.Zero } };
-        RegisterRawInputDevices(dev, 1, (uint)Marshal.SizeOf<RAWINPUTDEVICE>());
-        _registered = false;
+        switch (msg)
+        {
+            case WM_INPUT:
+                try { OnInput(lParam); }
+                catch (Exception ex)
+                {
+                    long n = Interlocked.Increment(ref _errors);
+                    if (n < 20) _log.Error("Ошибка разбора отчёта тачпада", ex);
+                }
+                return true;
+            case WM_INPUT_DEVICE_CHANGE:
+                if ((int)wParam == GIDC_REMOVAL && _devices.ContainsKey(lParam)) RemoveDevice(lParam);
+                RefreshDevicesCore();
+                return true;
+        }
+        return false;
     }
 
-    // ---------------------------------------------------------------- devices
+    // ---------------------------------------------------------------- устройства
 
-    /// <summary>Перечисляет PTP-устройства. Вызывается при старте и при WM_INPUT_DEVICE_CHANGE.</summary>
-    public void RefreshDevices()
+    private void RefreshDevicesCore()
     {
         var found = new HashSet<IntPtr>();
         uint count = 0;
@@ -138,6 +127,11 @@ public sealed class PrecisionTouchpad : ITouchSource, IDisposable
         foreach (var gone in _devices.Keys.Where(h => !found.Contains(h)).ToList())
             RemoveDevice(gone);
 
+        _snapshot = _devices.Values.Select(v => v.Info).ToArray();
+        UnavailableReason = _snapshot.Any(d => d.IsUsable) ? null
+            : TouchpadGestureGuard.LegacyTouchpadPresent
+                ? "Тачпад найден, но он не является Precision Touchpad: Windows не передаёт координаты касаний."
+                : "Precision Touchpad не найден.";
         DevicesChanged?.Invoke();
     }
 
@@ -147,7 +141,7 @@ public sealed class PrecisionTouchpad : ITouchSource, IDisposable
         var parser = HidReportParser.Create(h, out var err);
         string key = MakeDeviceKey(path, vid, pid);
         string name = GetProductName(path) ?? $"Precision Touchpad ({key})";
-        var info = new TouchpadDeviceInfo(h, key, name, path, vid, pid,
+        var info = new TouchpadDeviceInfo(h.ToString(), key, name,
             parser?.MaxContacts ?? 0,
             parser is null ? 0 : parser.XAxis.LogicalMax - parser.XAxis.LogicalMin,
             parser is null ? 0 : parser.YAxis.LogicalMax - parser.YAxis.LogicalMin,
@@ -164,6 +158,7 @@ public sealed class PrecisionTouchpad : ITouchSource, IDisposable
         if (!_devices.Remove(h, out var st)) return;
         _log.Info($"Тачпад отключён: {st.Info.DeviceKey}");
         st.Dispose();
+        _snapshot = _devices.Values.Select(v => v.Info).ToArray();
         DeviceRemoved?.Invoke(st.Info);
     }
 
@@ -202,24 +197,7 @@ public sealed class PrecisionTouchpad : ITouchSource, IDisposable
         catch { return null; }
     }
 
-    // ---------------------------------------------------------------- messages
-
-    /// <summary>Обработка сообщений окна. Возвращает true, если сообщение относится к тачпаду.</summary>
-    public bool HandleMessage(int msg, IntPtr wParam, IntPtr lParam)
-    {
-        switch (msg)
-        {
-            case WM_INPUT:
-                try { OnInput(lParam); }
-                catch (Exception ex) { ParseErrors++; if (ParseErrors < 20) _log.Error("Ошибка разбора отчёта тачпада", ex); }
-                return true;
-            case WM_INPUT_DEVICE_CHANGE:
-                if ((int)wParam == GIDC_REMOVAL && _devices.ContainsKey(lParam)) RemoveDevice(lParam);
-                RefreshDevices();
-                return true;
-        }
-        return false;
-    }
+    // ---------------------------------------------------------------- отчёты
 
     private void OnInput(IntPtr hRawInput)
     {
@@ -231,11 +209,11 @@ public sealed class PrecisionTouchpad : ITouchSource, IDisposable
 
         var header = Marshal.PtrToStructure<RAWINPUTHEADER>(_buffer);
         if (header.dwType != RIM_TYPEHID) return;
-        ReportsReceived++;
+        Interlocked.Increment(ref _reports);
 
         if (!_devices.TryGetValue(header.hDevice, out var dev))
         {
-            RefreshDevices(); // устройство появилось раньше уведомления
+            RefreshDevicesCore(); // устройство появилось раньше уведомления
             if (!_devices.TryGetValue(header.hDevice, out dev)) return;
         }
         if (dev.Parser is null) return;
@@ -245,50 +223,15 @@ public sealed class PrecisionTouchpad : ITouchSource, IDisposable
         uint reportSize = (uint)Marshal.ReadInt32(hid);
         uint reportCount = (uint)Marshal.ReadInt32(hid, 4);
         IntPtr data = hid + 8;
-        long now = _clock.ElapsedMilliseconds;
+        long now = MonotonicClock.NowMs;
 
         for (uint i = 0; i < reportCount; i++)
         {
             IntPtr report = data + (int)(i * reportSize);
             if (!dev.Parser.TryParse(report, reportSize, _slotBuffer, out int? contactCount)) continue;
-            Assemble(dev, contactCount, now);
+            foreach (var frame in dev.Assembler.Push(_slotBuffer, contactCount, now))
+                FrameReceived?.Invoke(dev.Info, frame);
         }
-    }
-
-    /// <summary>
-    /// Сборка кадра. Отчёт с Contact Count &gt; 0 начинает кадр; в гибридном режиме следующие отчёты несут
-    /// Contact Count = 0 и добавляют оставшиеся контакты. Действительны только первые (ожидаемое − собранное) слоты отчёта.
-    /// </summary>
-    private void Assemble(DeviceState dev, int? contactCount, long now)
-    {
-        int count = contactCount ?? _slotBuffer.Count; // устройство без Contact Count: все слоты действительны
-        if (count > 0 || dev.Expected == 0)
-        {
-            if (dev.Pending.Count > 0) Emit(dev, now, complete: false); // прошлый кадр не дособран
-            dev.Pending.Clear();
-            dev.Expected = count;
-        }
-
-        int take = Math.Min(_slotBuffer.Count, Math.Max(0, dev.Expected - dev.Pending.Count));
-        for (int i = 0; i < take; i++)
-        {
-            var s = _slotBuffer[i];
-            dev.Pending.Add(new TouchContact(s.ContactId, s.X, s.Y, s.Tip, s.Confidence));
-        }
-
-        if (dev.Pending.Count >= dev.Expected)
-        {
-            Emit(dev, now, complete: true);
-            dev.Pending.Clear();
-            dev.Expected = 0;
-        }
-    }
-
-    private void Emit(DeviceState dev, long now, bool complete)
-    {
-        var frame = new TouchFrame(now, dev.Pending.ToArray(), complete);
-        DeviceFrameReceived?.Invoke(dev.Info, frame);
-        FrameReceived?.Invoke(frame);
     }
 
     private void EnsureBuffer(uint size)
@@ -301,9 +244,21 @@ public sealed class PrecisionTouchpad : ITouchSource, IDisposable
 
     public void Dispose()
     {
-        Unregister();
-        foreach (var d in _devices.Values) d.Dispose();
-        _devices.Clear();
+        try
+        {
+            _input.Invoke(() =>
+            {
+                if (_registered)
+                {
+                    var dev = new[] { new RAWINPUTDEVICE { usUsagePage = UsagePageDigitizer, usUsage = UsageTouchPad, dwFlags = RIDEV_REMOVE, hwndTarget = IntPtr.Zero } };
+                    RegisterRawInputDevices(dev, 1, (uint)Marshal.SizeOf<RAWINPUTDEVICE>());
+                    _registered = false;
+                }
+                foreach (var d in _devices.Values) d.Dispose();
+                _devices.Clear();
+            }, 2000);
+        }
+        catch { /* поток ввода уже остановлен */ }
         if (_buffer != IntPtr.Zero) { Marshal.FreeHGlobal(_buffer); _buffer = IntPtr.Zero; _bufferSize = 0; }
     }
 }

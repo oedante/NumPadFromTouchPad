@@ -1,9 +1,9 @@
 using System.Runtime.InteropServices;
 using NumPad.Core.Engine;
 using NumPad.Core.Keys;
-using static NumPad.App.Platform.NativeMethods;
+using static NumPad.Platform.Windows.NativeMethods;
 
-namespace NumPad.App.Output;
+namespace NumPad.Platform.Windows;
 
 /// <summary>
 /// Keyboard Output Backend для Windows. Генерирует события через SendInput с явным VK, скан-кодом
