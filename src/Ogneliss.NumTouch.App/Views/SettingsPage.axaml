@@ -86,6 +86,7 @@
                 <StackPanel>
                     <TextBlock Classes="section" Text="{l:T 'Startup and window'}" />
                     <CheckBox x:Name="AutostartBox" Content="{l:T 'Start when I sign in'}" />
+                    <TextBlock x:Name="AutostartNote" Classes="subtle" FontSize="12" Margin="28,0,0,4" IsVisible="False" TextWrapping="Wrap" />
                     <CheckBox x:Name="MinimizedBox" Content="{l:T 'Start minimized to the tray'}" />
                     <CheckBox x:Name="CloseToTrayBox" Content="{l:T 'Closing the window minimizes the program to the tray'}" />
                     <CheckBox x:Name="RestoreModeBox" Content="{l:T 'Restore NumPad mode on startup'}" />

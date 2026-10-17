@@ -120,6 +120,7 @@ internal static class RussianStrings
         { "Built-in trackpad", "Встроенный трекпад" },
         { "Trackpad {0}", "Трекпад {0}" },
         { "No trackpad found.", "Трекпад не найден." },
+        { "In the Microsoft Store version, startup is turned on in Windows Settings → Apps → Startup.", "В версии из Microsoft Store автозапуск включается в «Параметры Windows → Приложения → Автозагрузка»." },
 //PLATFORM
         // ---------------------------------------------------------------- App
         { "NumPad off", "NumPad выключен" },

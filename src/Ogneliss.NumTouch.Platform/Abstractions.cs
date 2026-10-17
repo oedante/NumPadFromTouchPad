@@ -90,6 +90,8 @@ public interface IGestureGuard
 public interface IAutostart
 {
     bool IsSupported { get; }
+    /// <summary>Пояснение для настроек (например, где включается автозапуск в версии из Microsoft Store).</summary>
+    string? Note => null;
     bool IsEnabled();
     void Set(bool enabled, string executablePath);
     /// <summary>Удалить запись автозапуска прежнего названия программы. true — запись была.</summary>

@@ -31,6 +31,14 @@ jobs:
             rids: osx-arm64 osx-x64
             smoke: osx-arm64
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write   # вход в Azure по OIDC для подписи Windows (используется, только если подпись настроена)
+    env:
+      # Подпись включается сама, когда в репозитории заданы секреты/переменные (см. DISTRIBUTION.md).
+      WIN_SIGN: ${{ vars.AZURE_SIGNING_ACCOUNT != '' }}
+      MAC_SIGN: ${{ secrets.MACOS_CERT_P12 != '' }}
+      MAC_NOTARIZE: ${{ secrets.MACOS_CERT_P12 != '' && (secrets.AC_PASSWORD != '' || secrets.AC_API_KEY_P8 != '') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -88,10 +96,91 @@ jobs:
           if ($log) { Get-Content $log.FullName | Select-Object -Last 25 | ForEach-Object { Write-Host "::notice title=App log ${{ matrix.os }}::$_" } }
           if ($p.ExitCode -ne 0 -or -not $text.StartsWith("OK")) { exit 1 }
 
+      # ---------------------------------------------------------------- Windows: подпись (Azure Artifact Signing)
+      - name: Azure login (OIDC)
+        if: runner.os == 'Windows' && env.WIN_SIGN == 'true'
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign Windows executables
+        if: runner.os == 'Windows' && env.WIN_SIGN == 'true'
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}\artifacts
+          files-folder-filter: exe
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Verify Windows signature
+        if: runner.os == 'Windows' && env.WIN_SIGN == 'true'
+        shell: pwsh
+        run: |
+          foreach ($rid in "${{ matrix.rids }}".Split(' ')) {
+            $sig = Get-AuthenticodeSignature "artifacts/$rid/OgnelissNumTouch.exe"
+            Write-Host "::notice title=Signature $rid::$($sig.Status) $($sig.SignerCertificate.Subject)"
+            if ($sig.Status -ne 'Valid') { exit 1 }
+          }
+
+      # ---------------------------------------------------------------- Windows: пакет MSIX для Microsoft Store
+      - name: Build MSIX (Microsoft Store)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+          MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+          MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+        run: |
+          $a = @{}
+          if ($env:MSIX_IDENTITY_NAME) { $a.IdentityName = $env:MSIX_IDENTITY_NAME }
+          if ($env:MSIX_PUBLISHER) { $a.Publisher = $env:MSIX_PUBLISHER }
+          if ($env:MSIX_PUBLISHER_DISPLAY_NAME) { $a.PublisherDisplayName = $env:MSIX_PUBLISHER_DISPLAY_NAME }
+          foreach ($rid in "${{ matrix.rids }}".Split(' ')) { ./packaging/windows/make-msix.ps1 -Rid $rid @a }
+          New-Item -ItemType Directory -Force store | Out-Null
+          Move-Item dist/*.msix store/
+          $note = if ($env:MSIX_PUBLISHER) { "identity from repository variables" } else { "placeholder identity — set MSIX_* variables before uploading to the Store" }
+          Write-Host "::notice title=MSIX::$((Get-ChildItem store).Name -join ', ') ($note)"
+
+      # ---------------------------------------------------------------- macOS: сертификат Developer ID
+      - name: Import Developer ID certificate
+        if: runner.os == 'macOS' && env.MAC_SIGN == 'true'
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          kc="$RUNNER_TEMP/signing.keychain-db"; kcpw="$(uuidgen)"
+          printf '%s' "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$kcpw" "$kc"
+          security set-keychain-settings -lut 21600 "$kc"
+          security unlock-keychain -p "$kcpw" "$kc"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$kc"
+          security set-key-partition-list -S apple-tool:,apple: -k "$kcpw" "$kc" >/dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security find-identity -v -p codesigning "$kc"
+
       - name: Package
         shell: bash
+        env:
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          AC_APPLE_ID: ${{ secrets.AC_APPLE_ID }}
+          AC_TEAM_ID: ${{ secrets.AC_TEAM_ID }}
+          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
+          AC_API_KEY_P8: ${{ secrets.AC_API_KEY_P8 }}
+          AC_API_KEY_ID: ${{ secrets.AC_API_KEY_ID }}
+          AC_API_ISSUER_ID: ${{ secrets.AC_API_ISSUER_ID }}
         run: |
           mkdir -p dist
+          if [ -n "$AC_API_KEY_P8" ]; then
+            export AC_API_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"; printf '%s' "$AC_API_KEY_P8" > "$AC_API_KEY_PATH"
+          fi
           for rid in ${{ matrix.rids }}; do
             case "$rid" in
               win-*) cp "artifacts/$rid/OgnelissNumTouch.exe" "dist/OgnelissNumTouch-$rid.exe" ;;
@@ -100,15 +189,26 @@ jobs:
                 cp "artifacts/$rid/OgnelissNumTouch" packaging/linux/* "$d/"
                 cp src/Ogneliss.NumTouch.App/Assets/tray_on.png "$d/ogneliss-numtouch.png"
                 tar -C dist -czf "dist/OgnelissNumTouch-$rid.tar.gz" "OgnelissNumTouch-$rid"; rm -rf "$d" ;;
-              osx-*) bash packaging/macos/make-app.sh "$rid" && cp "artifacts/OgnelissNumTouch-$rid.zip" dist/ ;;
+              osx-*)
+                bash packaging/macos/make-app.sh "$rid"
+                echo "::notice title=App bundle $rid::$(cd "artifacts/OgnelissNumTouch-$rid.app/Contents/MacOS" && file * | sed 's/,.*//' | tr '\n' ';')"
+                if [ "$MAC_NOTARIZE" = "true" ]; then bash packaging/macos/notarize.sh "$rid"; fi
+                cp "artifacts/OgnelissNumTouch-$rid.zip" dist/ ;;
             esac
           done
           ls -la dist
+          rm -f "$RUNNER_TEMP/AuthKey.p8"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: OgnelissNumTouch-${{ runner.os }}
+          name: dist-${{ runner.os }}
           path: dist/*
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: store-msix
+          path: store/*
 
   release:
     needs: build
@@ -121,6 +221,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: dist-*
           merge-multiple: true
       - name: Create pre-release
         env:

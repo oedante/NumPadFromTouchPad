@@ -75,6 +75,8 @@ public partial class SettingsPage : UserControl, IPage
         try { autostart = _app.Platform.Autostart.IsEnabled(); } catch { autostart = s.StartWithWindows; }
         AutostartBox.IsChecked = autostart;
         AutostartBox.IsEnabled = _app.Platform.Autostart.IsSupported;
+        AutostartNote.Text = _app.Platform.Autostart.Note;
+        AutostartNote.IsVisible = _app.Platform.Autostart.Note is not null;
         MinimizedBox.IsChecked = s.StartMinimized;
         CloseToTrayBox.IsChecked = s.CloseToTray;
         RestoreModeBox.IsChecked = s.RestoreModeOnStart;
