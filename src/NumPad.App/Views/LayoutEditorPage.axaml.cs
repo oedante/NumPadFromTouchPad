@@ -1,20 +1,23 @@
 using System.Globalization;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using Microsoft.Win32;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using NumPad.App.Controls;
-using NumPad.App.Input;
 using NumPad.App.Services;
 using NumPad.Core.Config;
 using NumPad.Core.Engine;
 using NumPad.Core.Keys;
 using NumPad.Core.Layouts;
+using NumPad.Platform;
 
 namespace NumPad.App.Views;
 
-/// <summary>Визуальный редактор раскладок: работает с копией раскладки, сохраняет через ConfigStore с валидацией.</summary>
+/// <summary>
+/// Визуальный редактор раскладок: расположение и размер клавиш, их подписи и назначения (клавиша, сочетание, текст),
+/// отключение зон, промежутки, импорт/экспорт. Работает с копией раскладки; сохраняет через ConfigStore с валидацией.
+/// </summary>
 public partial class LayoutEditorPage : UserControl, IPage, IDisposable
 {
     private sealed record KeyItem(string Name, string Text)
@@ -23,7 +26,7 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
     }
 
     private readonly AppController _app;
-    private readonly List<KeyItem> _keyItems;
+    private readonly List<KeyItem> _keyItems = new();
     private readonly Stack<string> _undo = new();
     private readonly Stack<string> _redo = new();
     private Layout _working = BuiltInLayouts.Num20();
@@ -32,10 +35,14 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
     private bool _loading;
     private bool _live;
 
+    public LayoutEditorPage() : this(null!) { }
+
     public LayoutEditorPage(AppController app)
     {
         _app = app;
         InitializeComponent();
+        if (app is null) return;
+
         _keyItems = KeyCatalog.All
             .OrderBy(k => k.Group).ThenBy(k => k.Name, StringComparer.OrdinalIgnoreCase)
             .Select(k => new KeyItem(k.Name, $"{k.DisplayName}   ·   {GroupName(k.Group)}"))
@@ -46,9 +53,43 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         EditorCanvas.ShowGrid = true;
         EditorCanvas.SelectionChanged += _ => LoadKeyFields();
         EditorCanvas.EditStarting += PushUndo;
-        EditorCanvas.Editing += () => { LoadKeyFields(); };
+        EditorCanvas.Editing += LoadKeyFields;
         EditorCanvas.EditCompleted += () => { MarkDirty(); Validate(); };
-        PreviewKeyDown += OnPreviewKeyDown;
+        AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+
+        LayoutBox.SelectionChanged += async (_, _) => await OnLayoutSelected();
+        NewButton.Click += async (_, _) => await OnNew();
+        DuplicateButton.Click += async (_, _) => await OnDuplicate();
+        DeleteLayoutButton.Click += async (_, _) => await OnDeleteLayout();
+        ResetButton.Click += async (_, _) => await OnReset();
+        ImportButton.Click += async (_, _) => await OnImport();
+        ExportButton.Click += async (_, _) => await OnExport();
+        SaveButton.Click += async (_, _) => await TrySave(apply: false);
+        SaveApplyButton.Click += async (_, _) => await TrySave(apply: true);
+        RevertButton.Click += (_, _) => Revert();
+        AddKeyButton.Click += (_, _) => AddKey(below: false);
+        AddKeyBelowButton.Click += (_, _) => AddKey(below: true);
+        DeleteKeyButton.Click += (_, _) => DeleteSelectedKey();
+        UndoButton.Click += (_, _) => Undo();
+        RedoButton.Click += (_, _) => Redo();
+        SnapBox.Click += (_, _) => EditorCanvas.ShowGrid = SnapBox.IsChecked == true;
+        PointerOutsideBox.Click += (_, _) => OnLayoutCheckChanged();
+
+        foreach (var tb in new[] { NameBox, GapBox, AspectBox })
+        {
+            tb.LostFocus += (_, _) => ApplyLayoutFields();
+            tb.KeyDown += (_, e) => { if (e.Key == Key.Enter) { ApplyLayoutFields(); e.Handled = true; } };
+        }
+        foreach (var tb in new[] { LabelBox, TextValueBox, XBox, YBox, WBox, HBox })
+        {
+            tb.LostFocus += (_, _) => ApplyKeyFields();
+            tb.KeyDown += (_, e) => { if (e.Key == Key.Enter) { ApplyKeyFields(); e.Handled = true; } };
+        }
+        KindBox.SelectionChanged += (_, _) => OnKindChanged();
+        KeyBox.SelectionChanged += (_, _) => OnKeyChanged();
+        foreach (var cb in new[] { ModCtrl, ModShift, ModAlt, ModWin }) cb.Click += (_, _) => OnModifierChanged();
+        EnabledBox.Click += (_, _) => OnKeyCheckChanged();
+        RepeatBox.Click += (_, _) => OnKeyCheckChanged();
 
         LoadLayoutList(_app.ActiveLayout.Id);
     }
@@ -74,36 +115,42 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         if (!_live) { _app.FrameArrived += OnFrame; _live = true; }
     }
 
-    public bool OnLeaving()
+    public async Task<bool> CanLeaveAsync()
     {
-        if (_dirty && IsVisible)
-        {
-            var r = MessageBox.Show("Есть несохранённые изменения раскладки. Сохранить?", "Раскладки",
-                MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-            if (r == MessageBoxResult.Cancel) return false;
-            if (r == MessageBoxResult.Yes && !TrySave(apply: false)) return false;
-            if (r == MessageBoxResult.No) Revert();
-        }
-        if (_live) { _app.FrameArrived -= OnFrame; _live = false; }
-        EditorCanvas.Contacts = Array.Empty<ActiveContactInfo>();
+        if (!_dirty) return true;
+        var r = await Dialogs.AskAsync(this, "Раскладки", "Есть несохранённые изменения раскладки. Сохранить?", "Сохранить", "Не сохранять", "Отмена");
+        if (r is null or "Отмена") return false;
+        if (r == "Сохранить") return await TrySave(apply: false);
+        Revert();
         return true;
     }
 
-    public void Dispose()
+    public void OnHidden()
     {
         if (_live) { _app.FrameArrived -= OnFrame; _live = false; }
+        EditorCanvas.Contacts = Array.Empty<ActiveContactInfo>();
     }
+
+    public void Dispose() => OnHidden();
 
     // ================================================================= список раскладок
 
     private void LoadLayoutList(string? selectId)
     {
         _loading = true;
-        LayoutBox.ItemsSource = null;
-        LayoutBox.ItemsSource = _app.Layouts;
-        LayoutBox.SelectedItem = _app.Layouts.FirstOrDefault(l => l.Id == selectId) ?? _app.Layouts.FirstOrDefault();
+        var items = _app.Layouts.Select(l => new Choice<Layout>(l, l.Name + (BuiltInLayouts.Get(l.Id) is not null && !l.IsBuiltIn ? " (изменена)" : ""))).ToList();
+        LayoutBox.ItemsSource = items;
+        var sel = items.FirstOrDefault(i => i.Value.Id == selectId) ?? items.FirstOrDefault();
+        LayoutBox.SelectedItem = sel;
         _loading = false;
-        if (LayoutBox.SelectedItem is Layout l) Edit(l);
+        if (sel is not null) Edit(sel.Value);
+    }
+
+    private void SelectInList(string? id)
+    {
+        _loading = true;
+        LayoutBox.SelectedItem = (LayoutBox.ItemsSource as IEnumerable<Choice<Layout>>)?.FirstOrDefault(i => i.Value.Id == id);
+        _loading = false;
     }
 
     private void Edit(Layout source)
@@ -121,43 +168,43 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         UpdateButtons();
     }
 
-    private void OnLayoutSelected(object sender, SelectionChangedEventArgs e)
+    private async Task OnLayoutSelected()
     {
-        if (_loading || LayoutBox.SelectedItem is not Layout l || l.Id == _sourceId && !_dirty) return;
+        if (_loading || LayoutBox.SelectedItem is not Choice<Layout> choice) return;
+        var l = choice.Value;
+        if (l.Id == _sourceId && !_dirty) return;
         if (_dirty)
         {
-            var r = MessageBox.Show("Сохранить изменения текущей раскладки?", "Раскладки", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-            if (r == MessageBoxResult.Cancel || (r == MessageBoxResult.Yes && !TrySave(apply: false)))
+            var r = await Dialogs.AskAsync(this, "Раскладки", "Сохранить изменения текущей раскладки?", "Сохранить", "Не сохранять", "Отмена");
+            if (r is null or "Отмена" || (r == "Сохранить" && !await TrySave(apply: false)))
             {
-                _loading = true;
-                LayoutBox.SelectedItem = _app.Layouts.FirstOrDefault(x => x.Id == _sourceId);
-                _loading = false;
+                SelectInList(_sourceId);
                 return;
             }
-            // при сохранении список перезагружен — найти выбранную заново
             l = _app.Layouts.FirstOrDefault(x => x.Id == l.Id) ?? l;
+            SelectInList(l.Id);
         }
         Edit(l);
     }
 
-    private void OnNew(object sender, RoutedEventArgs e)
+    private async Task OnNew()
     {
-        if (!ConfirmDiscard()) return;
+        if (!await ConfirmDiscard()) return;
         var ids = _app.Layouts.Select(l => l.Id).ToList();
         var layout = new Layout
         {
             Id = ConfigStore.UniqueId("my-layout", ids),
             Name = "Новая раскладка",
-            AspectRatio = _app.ActiveDevice?.AspectRatio ?? 1.6,
+            AspectRatio = Math.Round(_app.ActiveDevice?.AspectRatio ?? 1.6, 3),
             Gap = 0.01,
             Keys = { new KeyZone { Id = "k1", Label = "1", X = 0.1, Y = 0.1, Width = 0.2, Height = 0.25, Action = KeyAction.ForKey("Numpad1") } },
         };
         StartUnsaved(layout);
     }
 
-    private void OnDuplicate(object sender, RoutedEventArgs e)
+    private async Task OnDuplicate()
     {
-        if (!ConfirmDiscard()) return;
+        if (!await ConfirmDiscard()) return;
         var ids = _app.Layouts.Select(l => l.Id).ToList();
         var copy = _working.Clone();
         copy.Id = ConfigStore.UniqueId(_working.Id + "-copy", ids);
@@ -181,63 +228,64 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         Validate();
     }
 
-    private void OnDeleteLayout(object sender, RoutedEventArgs e)
+    private async Task OnDeleteLayout()
     {
-        bool builtIn = BuiltInLayouts.Get(_working.Id) is not null;
-        if (builtIn) { OnReset(sender, e); return; }
-        if (MessageBox.Show($"Удалить раскладку «{_working.Name}»?", "Раскладки", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (BuiltInLayouts.Get(_working.Id) is not null) { await OnReset(); return; }
+        if (!_app.Layouts.Any(l => l.Id == _working.Id)) { _dirty = false; LoadLayoutList(_app.ActiveLayout.Id); return; } // ещё не сохранена
+        if (!await Dialogs.ConfirmAsync(this, "Раскладки", $"Удалить раскладку «{_working.Name}»?")) return;
         _app.DeleteLayout(_working.Id);
         _dirty = false;
         LoadLayoutList(_app.ActiveLayout.Id);
     }
 
-    private void OnReset(object sender, RoutedEventArgs e)
+    private async Task OnReset()
     {
         var builtIn = BuiltInLayouts.Get(_working.Id);
         if (builtIn is null) return;
-        if (MessageBox.Show($"Вернуть стандартную раскладку «{builtIn.Name}»? Ваши изменения будут удалены.", "Раскладки",
-                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (!await Dialogs.ConfirmAsync(this, "Раскладки", $"Вернуть стандартную раскладку «{builtIn.Name}»? Ваши изменения будут удалены.")) return;
         _app.DeleteLayout(_working.Id); // удаление пользовательской копии = возврат к встроенной
         _dirty = false;
         LoadLayoutList(builtIn.Id);
     }
 
-    private void OnImport(object sender, RoutedEventArgs e)
+    private async Task OnImport()
     {
-        if (!ConfirmDiscard()) return;
-        var dlg = new OpenFileDialog { Filter = "Раскладка NumPad (*.json)|*.json", Title = "Импорт раскладки" };
-        if (dlg.ShowDialog() != true) return;
-        try
+        if (!await ConfirmDiscard()) return;
+        var top = TopLevel.GetTopLevel(this);
+        if (top is null) return;
+        var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            var layout = _app.Store.ImportLayout(dlg.FileName, _app.Layouts.Select(l => l.Id));
-            StartUnsaved(layout);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Не удалось импортировать раскладку: " + ex.Message, "Импорт", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+            Title = "Импорт раскладки",
+            AllowMultiple = false,
+            FileTypeFilter = new[] { new FilePickerFileType("Раскладка NumPad") { Patterns = new[] { "*.json" } } },
+        });
+        var path = files.FirstOrDefault()?.TryGetLocalPath();
+        if (path is null) return;
+        try { StartUnsaved(_app.Store.ImportLayout(path, _app.Layouts.Select(l => l.Id))); }
+        catch (Exception ex) { await Dialogs.InfoAsync(this, "Импорт", "Не удалось импортировать раскладку: " + ex.Message); }
     }
 
-    private void OnExport(object sender, RoutedEventArgs e)
+    private async Task OnExport()
     {
-        var dlg = new SaveFileDialog { Filter = "Раскладка NumPad (*.json)|*.json", FileName = _working.Id + ".json", Title = "Экспорт раскладки" };
-        if (dlg.ShowDialog() != true) return;
-        try { _app.Store.ExportLayout(_working, dlg.FileName); }
-        catch (Exception ex) { MessageBox.Show("Не удалось сохранить файл: " + ex.Message, "Экспорт", MessageBoxButton.OK, MessageBoxImage.Error); }
+        var top = TopLevel.GetTopLevel(this);
+        if (top is null) return;
+        var file = await top.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Экспорт раскладки",
+            SuggestedFileName = _working.Id + ".json",
+            DefaultExtension = "json",
+            FileTypeChoices = new[] { new FilePickerFileType("Раскладка NumPad") { Patterns = new[] { "*.json" } } },
+        });
+        var path = file?.TryGetLocalPath();
+        if (path is null) return;
+        try { _app.Store.ExportLayout(_working, path); }
+        catch (Exception ex) { await Dialogs.InfoAsync(this, "Экспорт", "Не удалось сохранить файл: " + ex.Message); }
     }
 
-    private bool ConfirmDiscard()
-    {
-        if (!_dirty) return true;
-        return MessageBox.Show("Несохранённые изменения будут потеряны. Продолжить?", "Раскладки",
-            MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
-    }
+    private async Task<bool> ConfirmDiscard() =>
+        !_dirty || await Dialogs.ConfirmAsync(this, "Раскладки", "Несохранённые изменения будут потеряны. Продолжить?");
 
     // ================================================================= сохранение
-
-    private void OnSave(object sender, RoutedEventArgs e) => TrySave(apply: false);
-    private void OnSaveApply(object sender, RoutedEventArgs e) => TrySave(apply: true);
-    private void OnRevert(object sender, RoutedEventArgs e) => Revert();
 
     private void Revert()
     {
@@ -246,14 +294,15 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         else Edit(src);
     }
 
-    private bool TrySave(bool apply)
+    private async Task<bool> TrySave(bool apply)
     {
-        CommitFocusedField();
+        ApplyLayoutFields();
+        ApplyKeyFields();
         var issues = LayoutValidator.Validate(_working);
         if (LayoutValidator.HasErrors(issues))
         {
-            MessageBox.Show("Раскладку нельзя сохранить:\n\n" + string.Join("\n", issues.Where(i => i.Severity == IssueSeverity.Error).Take(10)),
-                "Раскладки", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await Dialogs.InfoAsync(this, "Раскладки", "Раскладку нельзя сохранить:\n\n" +
+                string.Join("\n", issues.Where(i => i.Severity == IssueSeverity.Error).Take(10)));
             return false;
         }
         try
@@ -267,17 +316,9 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Не удалось сохранить раскладку: " + ex.Message, "Раскладки", MessageBoxButton.OK, MessageBoxImage.Error);
+            await Dialogs.InfoAsync(this, "Раскладки", "Не удалось сохранить раскладку: " + ex.Message);
             return false;
         }
-    }
-
-    private void CommitFocusedField()
-    {
-        if (Keyboard.FocusedElement is TextBox tb)
-            tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-        ApplyLayoutFields();
-        ApplyKeyFields();
     }
 
     // ================================================================= undo / redo
@@ -311,14 +352,14 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         Validate();
     }
 
-    private void OnUndo(object sender, RoutedEventArgs e)
+    private void Undo()
     {
         if (_undo.Count == 0) return;
         _redo.Push(Snapshot());
         Restore(_undo.Pop());
     }
 
-    private void OnRedo(object sender, RoutedEventArgs e)
+    private void Redo()
     {
         if (_redo.Count == 0) return;
         _undo.Push(Snapshot());
@@ -329,9 +370,6 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
 
     private KeyZone? Selected => _working.Keys.FirstOrDefault(k => k.Id == EditorCanvas.SelectedKeyId);
 
-    private void OnAddKey(object sender, RoutedEventArgs e) => AddKey(below: false);
-    private void OnAddKeyBelow(object sender, RoutedEventArgs e) => AddKey(below: true);
-
     private void AddKey(bool below)
     {
         PushUndo();
@@ -339,7 +377,6 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         double w = sel?.Width ?? 0.15, h = sel?.Height ?? 0.2;
         double x = sel is null ? 0.05 : below ? sel.X : sel.X + sel.Width + _working.Gap;
         double y = sel is null ? 0.05 : below ? sel.Y + sel.Height + _working.Gap * _working.AspectRatio : sel.Y;
-        // Если не помещается — ставим в левый верхний угол; пользователь передвинет.
         if (x + w > 1) x = Math.Max(0, 1 - w);
         if (y + h > 1) y = Math.Max(0, 1 - h);
         int n = 1;
@@ -358,8 +395,6 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         LabelBox.SelectAll();
     }
 
-    private void OnDeleteKey(object sender, RoutedEventArgs e) => DeleteSelectedKey();
-
     private void DeleteSelectedKey()
     {
         var sel = Selected;
@@ -372,18 +407,19 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         Validate();
     }
 
-    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
-        bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
-        if (ctrl && e.Key == Key.Z) { OnUndo(this, e); e.Handled = true; return; }
-        if (ctrl && e.Key == Key.Y) { OnRedo(this, e); e.Handled = true; return; }
-        if (Keyboard.FocusedElement is not LayoutCanvas) return;
+        bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+        if (ctrl && e.Key == Key.Z) { Undo(); e.Handled = true; return; }
+        if (ctrl && e.Key == Key.Y) { Redo(); e.Handled = true; return; }
+        var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+        if (focused is not LayoutCanvas) return;
 
         var sel = Selected;
         if (sel is null) return;
-        if (e.Key == Key.Delete) { DeleteSelectedKey(); e.Handled = true; return; }
+        if (e.Key is Key.Delete or Key.Back) { DeleteSelectedKey(); e.Handled = true; return; }
 
-        double step = (Keyboard.Modifiers & ModifierKeys.Shift) != 0 ? 0.02 : 0.004;
+        double step = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? 0.02 : 0.004;
         double dx = e.Key == Key.Left ? -step : e.Key == Key.Right ? step : 0;
         double dy = e.Key == Key.Up ? -step : e.Key == Key.Down ? step : 0;
         if (dx == 0 && dy == 0) return;
@@ -415,12 +451,12 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
     private void ApplyLayoutFields()
     {
         if (_loading) return;
-        string name = NameBox.Text.Trim();
+        string name = (NameBox.Text ?? "").Trim();
         double? gap = ParsePct(GapBox.Text);
         double? aspect = ParseNum(AspectBox.Text);
-        bool changed = name != _working.Name
+        bool changed = (name.Length > 0 && name != _working.Name)
                        || gap is double g && Math.Abs(g - _working.Gap) > 1e-9
-                       || aspect is double a && Math.Abs(a - _working.AspectRatio) > 1e-9;
+                       || aspect is double a && a > 0.1 && a < 10 && Math.Abs(a - _working.AspectRatio) > 1e-9;
         if (!changed) { LoadLayoutFields(); return; }
         PushUndo();
         if (name.Length > 0) _working.Name = name;
@@ -432,28 +468,12 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         Validate();
     }
 
-    private void OnLayoutFieldCommit(object sender, RoutedEventArgs e) => ApplyLayoutFields();
-
-    private void OnLayoutCheckChanged(object sender, RoutedEventArgs e)
+    private void OnLayoutCheckChanged()
     {
-        if (_loading) return;
         PushUndo();
         _working.AllowPointerOutsideKeys = PointerOutsideBox.IsChecked == true;
         EditorCanvas.Refresh();
         MarkDirty();
-    }
-
-    private void OnSnapChanged(object sender, RoutedEventArgs e)
-    {
-        if (EditorCanvas is not null) EditorCanvas.ShowGrid = SnapBox.IsChecked == true;
-    }
-
-    private void OnFieldKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter) return;
-        if (sender == NameBox || sender == GapBox || sender == AspectBox) ApplyLayoutFields();
-        else ApplyKeyFields();
-        e.Handled = true;
     }
 
     // ================================================================= поля клавиши
@@ -464,14 +484,14 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         try
         {
             var k = Selected;
-            KeyPanel.Visibility = k is null ? Visibility.Collapsed : Visibility.Visible;
-            NoSelection.Visibility = k is null ? Visibility.Visible : Visibility.Collapsed;
+            KeyPanel.IsVisible = k is not null;
+            NoSelection.IsVisible = k is null;
             DeleteKeyButton.IsEnabled = k is not null;
             if (k is null) { KeyHeader.Text = "Клавиша"; return; }
 
             KeyHeader.Text = $"Клавиша «{k.Label}»";
             LabelBox.Text = k.Label;
-            KindBox.SelectedItem = KindBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == k.Action.Kind.ToString());
+            KindBox.SelectedItem = KindBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string?)i.Tag == k.Action.Kind.ToString());
             KeyBox.SelectedItem = KeyCatalog.TryGet(k.Action.Key, out var def) ? _keyItems.FirstOrDefault(i => i.Name == def.Name) : null;
             var mods = k.Action.Modifiers.Select(m => KeyCatalog.TryGet(m, out var md) ? md.Name : m).ToList();
             ModCtrl.IsChecked = mods.Any(m => m.Contains("Ctrl"));
@@ -492,9 +512,9 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
 
     private void UpdateActionPanels(KeyActionKind kind)
     {
-        KeyChoicePanel.Visibility = kind is KeyActionKind.Key or KeyActionKind.Combo ? Visibility.Visible : Visibility.Collapsed;
-        ModifiersPanel.Visibility = kind == KeyActionKind.Combo ? Visibility.Visible : Visibility.Collapsed;
-        TextPanel.Visibility = kind == KeyActionKind.Text ? Visibility.Visible : Visibility.Collapsed;
+        KeyChoicePanel.IsVisible = kind is KeyActionKind.Key or KeyActionKind.Combo;
+        ModifiersPanel.IsVisible = kind == KeyActionKind.Combo;
+        TextPanel.IsVisible = kind == KeyActionKind.Text;
     }
 
     private void ApplyKeyFields()
@@ -502,8 +522,8 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         if (_loading) return;
         var k = Selected;
         if (k is null) return;
-        string label = LabelBox.Text;
-        string text = TextValueBox.Text;
+        string label = LabelBox.Text ?? "";
+        string text = TextValueBox.Text ?? "";
         double? x = ParsePct(XBox.Text), y = ParsePct(YBox.Text), w = ParsePct(WBox.Text), h = ParsePct(HBox.Text);
         bool changed = label != k.Label
                        || (k.Action.Kind == KeyActionKind.Text && text != (k.Action.Text ?? ""))
@@ -524,9 +544,7 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
 
     private static bool Diff(double? v, double current) => v is double d && Math.Abs(d - current) > 1e-6;
 
-    private void OnKeyFieldCommit(object sender, RoutedEventArgs e) => ApplyKeyFields();
-
-    private void OnKindChanged(object sender, SelectionChangedEventArgs e)
+    private void OnKindChanged()
     {
         if (_loading || Selected is not { } k || KindBox.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
         if (!Enum.TryParse<KeyActionKind>(tag, out var kind) || kind == k.Action.Kind) return;
@@ -541,14 +559,14 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         Validate();
     }
 
-    private void OnKeyChanged(object sender, SelectionChangedEventArgs e)
+    private void OnKeyChanged()
     {
         if (_loading || Selected is not { } k || KeyBox.SelectedItem is not KeyItem item || item.Name == k.Action.Key) return;
         PushUndo();
-        string? oldDisplay = KeyCatalog.TryGet(k.Action.Key, out var oldDef) ? oldDef.DisplayName : null;
+        string? oldDisplay = KeyCatalog.TryGet(k.Action.Key, out var oldDef) ? oldDef.DisplayName.Replace("Num ", "") : null;
         k.Action.Key = item.Name;
-        // Подпись по умолчанию следует за назначением, если пользователь её не менял.
-        if (k.Label == "?" || k.Label == oldDisplay || k.Label == k.Action.Key)
+        // Подпись следует за назначением, если пользователь её не менял.
+        if (k.Label == "?" || k.Label == oldDisplay || k.Label == oldDef?.Name)
             k.Label = KeyCatalog.Get(item.Name).DisplayName.Replace("Num ", "");
         EditorCanvas.Refresh();
         LoadKeyFields();
@@ -556,9 +574,9 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         Validate();
     }
 
-    private void OnModifierChanged(object sender, RoutedEventArgs e)
+    private void OnModifierChanged()
     {
-        if (_loading || Selected is not { } k) return;
+        if (Selected is not { } k) return;
         PushUndo();
         k.Action.Modifiers.Clear();
         if (ModCtrl.IsChecked == true) k.Action.Modifiers.Add("Ctrl");
@@ -569,9 +587,9 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         Validate();
     }
 
-    private void OnKeyCheckChanged(object sender, RoutedEventArgs e)
+    private void OnKeyCheckChanged()
     {
-        if (_loading || Selected is not { } k) return;
+        if (Selected is not { } k) return;
         PushUndo();
         k.Enabled = EnabledBox.IsChecked == true;
         k.Repeat = RepeatBox.IsChecked == true;
@@ -584,7 +602,7 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
 
     private void OnFrame(TouchpadDeviceInfo device, TouchFrame frame)
     {
-        if (_app.ActiveDevice?.Handle != device.Handle) return;
+        if (_app.ActiveDevice?.Id != device.Id) return;
         var hit = new HitTester(_working);
         EditorCanvas.ActiveKeyIds.Clear();
         var list = new List<ActiveContactInfo>();
@@ -608,7 +626,7 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
 
     private void UpdateButtons()
     {
-        DirtyMark.Visibility = _dirty ? Visibility.Visible : Visibility.Collapsed;
+        DirtyMark.IsVisible = _dirty;
         UndoButton.IsEnabled = _undo.Count > 0;
         RedoButton.IsEnabled = _redo.Count > 0;
     }
@@ -616,27 +634,35 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
     private void Validate()
     {
         var issues = LayoutValidator.Validate(_working);
-        if (issues.Count == 0)
+        // Клавиши, которых нет на текущей платформе (например, Print Screen на Mac), — предупреждение.
+        var missing = _working.Keys.Where(k => k.Action.Kind is KeyActionKind.Key or KeyActionKind.Combo && KeyCatalog.TryGet(k.Action.Key, out var d)
+                                               && !IsAvailableOnThisPlatform(d)).Select(k => k.Label).ToList();
+        var parts = issues.Take(6).Select(i => (i.Severity == IssueSeverity.Error ? "✕ " : "⚠ ") + (i.KeyId is null ? "" : $"[{i.KeyId}] ") + i.Message).ToList();
+        if (missing.Count > 0) parts.Add("⚠ Недоступно на этой ОС: " + string.Join(", ", missing));
+        if (parts.Count == 0)
         {
             IssuesText.Text = $"✓ Ошибок нет · клавиш: {_working.Keys.Count}";
-            IssuesText.Foreground = (Brush)FindResource("OnBrush");
+            IssuesText.Foreground = Ui.Brush("OnBrush");
         }
         else
         {
-            IssuesText.Text = string.Join("   ", issues.Take(6).Select(i => (i.Severity == IssueSeverity.Error ? "✕ " : "⚠ ") +
-                                                                       (i.KeyId is null ? "" : $"[{i.KeyId}] ") + i.Message))
-                              + (issues.Count > 6 ? $"   … и ещё {issues.Count - 6}" : "");
-            IssuesText.Foreground = LayoutValidator.HasErrors(issues) ? (Brush)FindResource("ErrorBrush") : (Brush)FindResource("WarningBrush");
+            IssuesText.Text = string.Join("   ", parts) + (issues.Count > 6 ? $"   … и ещё {issues.Count - 6}" : "");
+            IssuesText.Foreground = Ui.Brush(LayoutValidator.HasErrors(issues) ? "ErrorBrush" : "WarningBrush");
         }
     }
 
+    private static bool IsAvailableOnThisPlatform(KeyDefinition d) =>
+        OperatingSystem.IsMacOS() ? PlatformKeyCodes.Mac.ContainsKey(d.Name)
+        : OperatingSystem.IsLinux() ? PlatformKeyCodes.Linux.ContainsKey(d.Name)
+        : true;
+
     private static string Pct(double v) => (v * 100).ToString("0.##", CultureInfo.CurrentCulture);
 
-    private static double? ParseNum(string s)
+    private static double? ParseNum(string? s)
     {
-        s = s.Trim().Replace(',', '.');
+        s = (s ?? "").Trim().Replace(',', '.');
         return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && double.IsFinite(v) ? v : null;
     }
 
-    private static double? ParsePct(string s) => ParseNum(s) is double v ? v / 100 : null;
+    private static double? ParsePct(string? s) => ParseNum(s) is double v ? v / 100 : null;
 }

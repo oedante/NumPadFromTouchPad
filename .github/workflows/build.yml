@@ -2,8 +2,7 @@ name: build
 
 on:
   push:
-    branches: ['main']
-    tags: ['v*']
+    branches: ['**']
   pull_request:
   workflow_dispatch:
     inputs:
@@ -12,91 +11,120 @@ on:
         required: false
         default: ''
 
+env:
+  DOTNET_NOLOGO: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+
 jobs:
-  core-tests-linux:
-    # Общая логика не зависит от Windows — тесты гоняются и на Linux.
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rids: win-x64 win-arm64
+            smoke: win-x64
+          - os: ubuntu-latest
+            rids: linux-x64 linux-arm64
+            smoke: linux-x64
+          - os: macos-latest
+            rids: osx-arm64 osx-x64
+            smoke: osx-arm64
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
-      - run: dotnet test tests/NumPad.Core.Tests/NumPad.Core.Tests.csproj -c Release --logger "trx;LogFileName=core-tests.trx" --results-directory TestResults
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-linux
-          path: TestResults
+          dotnet-version: 10.0.x
 
-  windows:
-    runs-on: windows-latest
+      - name: Build (warnings reported as annotations)
+        shell: pwsh
+        run: |
+          dotnet build NumPadFromTouchPad.sln -c Release 2>&1 | Tee-Object -FilePath build.log
+          $code = $LASTEXITCODE
+          $w = Select-String -Path build.log -Pattern '(error|warning) [A-Z]+[0-9]+' | ForEach-Object { $_.Line.Trim() } | Sort-Object -Unique
+          Write-Host "::notice title=Build ${{ matrix.os }}::exit=$code, diagnostics: $($w.Count)"
+          $w | Select-Object -First 50 | ForEach-Object { Write-Host "::warning title=Compiler ${{ matrix.os }}::$_" }
+          exit $code
+
+      - name: Test
+        shell: pwsh
+        run: |
+          dotnet test tests/NumPad.Core.Tests/NumPad.Core.Tests.csproj -c Release --no-build --logger "trx;LogFileName=t.trx" --results-directory TR 2>&1 | Tee-Object -FilePath test.log
+          $code = $LASTEXITCODE
+          if (Test-Path TR/t.trx) { [xml]$x = Get-Content TR/t.trx; $c = $x.TestRun.ResultSummary.Counters; Write-Host "::notice title=Tests ${{ matrix.os }}::total=$($c.total) passed=$($c.passed) failed=$($c.failed)" }
+          Select-String -Path test.log -Pattern '\[FAIL\]' | Select-Object -First 30 | ForEach-Object { Write-Host "::warning title=Failed test::$($_.Line.Trim())" }
+          exit $code
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          foreach ($rid in "${{ matrix.rids }}".Split(' ')) {
+            dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=$rid
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Install Xvfb (Linux UI self-test)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+
+      - name: UI self-test (main window + all pages)
+        shell: pwsh
+        env:
+          NUMPAD_SELFTEST_RESULT: ${{ github.workspace }}/selftest-result.txt
+        run: |
+          $dir = "artifacts/${{ matrix.smoke }}"
+          $exe = if ($IsWindows) { "$dir/NumPadFromTouchPad.exe" } else { "$dir/NumPadFromTouchPad" }
+          if ($IsLinux) {
+            $p = Start-Process xvfb-run -ArgumentList "-a", $exe, "--selftest" -PassThru
+          } else {
+            $p = Start-Process $exe -ArgumentList "--selftest" -PassThru
+          }
+          if (-not $p.WaitForExit(120000)) { Stop-Process -Id $p.Id -Force; Write-Host "::error title=Self-test::timeout"; exit 1 }
+          $text = if (Test-Path $env:NUMPAD_SELFTEST_RESULT) { Get-Content $env:NUMPAD_SELFTEST_RESULT -Raw } else { "no result file" }
+          Write-Host "::notice title=Self-test ${{ matrix.os }} (exit $($p.ExitCode))::$($text -replace "`r?`n", ' / ')"
+          $log = Get-ChildItem -Recurse -Filter numpad.log -Path @($env:APPDATA, "$HOME/.config", "$HOME/Library") -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($log) { Get-Content $log.FullName | Select-Object -Last 25 | ForEach-Object { Write-Host "::notice title=App log ${{ matrix.os }}::$_" } }
+          if ($p.ExitCode -ne 0 -or -not $text.StartsWith("OK")) { exit 1 }
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist
+          for rid in ${{ matrix.rids }}; do
+            case "$rid" in
+              win-*) cp "artifacts/$rid/NumPadFromTouchPad.exe" "dist/NumPadFromTouchPad-$rid.exe" ;;
+              linux-*)
+                d="dist/NumPadFromTouchPad-$rid"; mkdir -p "$d"
+                cp "artifacts/$rid/NumPadFromTouchPad" packaging/linux/* "$d/"
+                cp src/NumPad.App/Assets/tray_on.png "$d/numpad-from-touchpad.png"
+                tar -C dist -czf "dist/NumPadFromTouchPad-$rid.tar.gz" "NumPadFromTouchPad-$rid"; rm -rf "$d" ;;
+              osx-*) bash packaging/macos/make-app.sh "$rid" && cp "artifacts/NumPadFromTouchPad-$rid.zip" dist/ ;;
+            esac
+          done
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NumPadFromTouchPad-${{ runner.os }}
+          path: dist/*
+
+  release:
+    needs: build
+    if: github.event.inputs.release_tag != ''
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/download-artifact@v4
         with:
-          dotnet-version: 8.0.x
-      - name: Build (warnings reported as annotations)
-        shell: pwsh
-        run: |
-          dotnet build NumPadFromTouchPad.sln -c Release --no-incremental 2>&1 | Tee-Object -FilePath build.log
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $w = Select-String -Path build.log -Pattern 'warning [A-Z]+[0-9]+' | ForEach-Object { $_.Line.Trim() } | Sort-Object -Unique
-          Write-Host "::notice title=Build::Warnings: $($w.Count)"
-          $w | Select-Object -First 40 | ForEach-Object { Write-Host "::warning title=Compiler::$_" }
-      - name: Test
-        shell: pwsh
-        run: |
-          dotnet test tests/NumPad.Core.Tests/NumPad.Core.Tests.csproj -c Release --no-build --logger "trx;LogFileName=core-tests.trx" --results-directory TestResults
-          $code = $LASTEXITCODE
-          [xml]$trx = Get-Content TestResults/core-tests.trx
-          $c = $trx.TestRun.ResultSummary.Counters
-          Write-Host "::notice title=Tests::total=$($c.total) passed=$($c.passed) failed=$($c.failed) skipped=$($c.notExecuted)"
-          exit $code
-      - name: Publish win-x64 (self-contained single file)
-        run: dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=win-x64
-      - name: Publish win-arm64
-        run: dotnet publish src/NumPad.App/NumPad.App.csproj -p:PublishProfile=win-arm64
-      - name: Smoke start (process starts and stays alive 5 s)
-        shell: pwsh
-        run: |
-          $exe = "artifacts/win-x64/NumPadFromTouchPad.exe"
-          $p = Start-Process $exe -ArgumentList "--minimized" -PassThru
-          Start-Sleep -Seconds 5
-          if ($p.HasExited) { Write-Error "Process exited with code $($p.ExitCode)"; exit 1 }
-          Stop-Process -Id $p.Id -Force
-          $log = Join-Path $env:APPDATA "NumPadFromTouchPad/logs/numpad.log"
-          if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host "::notice title=App log::$_" } }
-      - name: UI self-test (main window + all pages)
-        shell: pwsh
-        run: |
-          $p = Start-Process "artifacts/win-x64/NumPadFromTouchPad.exe" -ArgumentList "--selftest" -PassThru
-          if (-not $p.WaitForExit(60000)) { Stop-Process -Id $p.Id -Force; Write-Error "Self-test timed out"; exit 1 }
-          $res = Join-Path $env:APPDATA "NumPadFromTouchPad/selftest-result.txt"
-          $text = if (Test-Path $res) { Get-Content $res -Raw } else { "no result file" }
-          Write-Host "::notice title=Self-test (exit $($p.ExitCode))::$($text -replace "`r?`n", ' / ')"
-          if ($p.ExitCode -ne 0) { exit 1 }
-      - uses: actions/upload-artifact@v4
-        with:
-          name: NumPadFromTouchPad-win-x64
-          path: artifacts/win-x64/NumPadFromTouchPad.exe
-      - uses: actions/upload-artifact@v4
-        with:
-          name: NumPadFromTouchPad-win-arm64
-          path: artifacts/win-arm64/NumPadFromTouchPad.exe
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-windows
-          path: TestResults
-      - name: GitHub Release (tags v* or manual run with release_tag)
-        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release_tag != ''
-        shell: pwsh
+          path: dist
+          merge-multiple: true
+      - name: Create pre-release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          Copy-Item artifacts/win-x64/NumPadFromTouchPad.exe NumPadFromTouchPad-win-x64.exe
-          Copy-Item artifacts/win-arm64/NumPadFromTouchPad.exe NumPadFromTouchPad-win-arm64.exe
-          $tag = if ("${{ github.event.inputs.release_tag }}") { "${{ github.event.inputs.release_tag }}" } else { "${{ github.ref_name }}" }
-          gh release create $tag NumPadFromTouchPad-win-x64.exe NumPadFromTouchPad-win-arm64.exe --target $env:GITHUB_SHA --prerelease --title "NumPad from TouchPad $tag" --notes-file CHANGELOG.md
+          ls -la dist
+          gh release create "${{ github.event.inputs.release_tag }}" dist/* --target "$GITHUB_SHA" --prerelease \
+            --title "NumPad from TouchPad ${{ github.event.inputs.release_tag }}" --notes-file CHANGELOG.md

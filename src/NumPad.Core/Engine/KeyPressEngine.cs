@@ -98,6 +98,11 @@ public sealed class KeyPressEngine
 
     public PointD ToArea(PointD device) => _transform.Apply(device);
 
+    /// <summary>Есть ли сейчас касание, при котором указатель должен блокироваться.</summary>
+    public bool HasSuppressingContact => _contacts.Values.Any(c => c.SuppressesPointer);
+    /// <summary>Время последней «блокирующей» активности (касание, движение, отрыв) — для хвоста подавления.</summary>
+    public long LastSuppressActivityMs => _lastSuppressActivityMs;
+
     /// <summary>Нужно ли блокировать указатель (курсор/тапы) в данный момент.</summary>
     public bool WantsPointerSuppression(long nowMs, int tailMs)
     {

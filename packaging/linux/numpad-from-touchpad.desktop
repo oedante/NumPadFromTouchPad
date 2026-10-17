@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=NumPad from TouchPad
+Comment=Тачпад как цифровой блок клавиатуры
+Exec=numpad-from-touchpad
+Icon=numpad-from-touchpad
+Terminal=false
+Categories=Utility;Accessibility;

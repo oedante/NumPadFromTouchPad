@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="NumPad.App.Views.MainWindow"
+        Title="NumPad from TouchPad"
+        Width="1140" Height="760" MinWidth="920" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource PageBrush}"
+        Icon="/Assets/app.ico">
+    <Grid ColumnDefinitions="220,*">
+        <!-- Боковая панель -->
+        <DockPanel Grid.Column="0" Background="{StaticResource SidebarBrush}">
+            <StackPanel DockPanel.Dock="Top" Margin="20,22,20,22" Orientation="Horizontal" Spacing="10">
+                <Image Source="/Assets/tray_on.png" Width="30" Height="30" />
+                <StackPanel>
+                    <TextBlock Text="NumPad" Foreground="White" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="from TouchPad" Foreground="#A8A8A8" FontSize="12" />
+                </StackPanel>
+            </StackPanel>
+
+            <Border DockPanel.Dock="Bottom" Margin="14" Padding="12" CornerRadius="8" Background="#3C3C3C">
+                <StackPanel Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Ellipse x:Name="StatusDot" Width="10" Height="10" Fill="#8A8A8A" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusText" Text="Выключен" Foreground="White" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <TextBlock x:Name="HotkeyHint" Foreground="#A8A8A8" FontSize="12" Margin="18,0,0,0" TextWrapping="Wrap" />
+                    <Button x:Name="ExitButton" Content="Выход" Margin="0,8,0,0" Foreground="#E6E6E6" Background="#4A4A4A" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <StackPanel x:Name="Nav">
+                <Button Classes="nav selected" Content="Главная" Tag="home" />
+                <Button Classes="nav" Content="Раскладки" Tag="layout" />
+                <Button Classes="nav" Content="Калибровка" Tag="calibration" />
+                <Button Classes="nav" Content="Настройки" Tag="settings" />
+                <Button Classes="nav" Content="Диагностика" Tag="diagnostics" />
+            </StackPanel>
+        </DockPanel>
+
+        <ContentControl x:Name="PageHost" Grid.Column="1" />
+    </Grid>
+</Window>

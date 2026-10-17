@@ -1,8 +1,7 @@
 using System.Globalization;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
-using NumPad.App.Input;
+using Avalonia.Controls;
+using Avalonia.Media;
+using Avalonia.Threading;
 using NumPad.App.Services;
 using NumPad.Core.Calibration;
 using NumPad.Core.Config;
@@ -10,16 +9,17 @@ using NumPad.Core.Engine;
 using NumPad.Core.Geometry;
 using NumPad.Core.Keys;
 using NumPad.Core.Layouts;
+using NumPad.Platform;
 
 namespace NumPad.App.Views;
 
 /// <summary>
-/// Мастер калибровки. Работает с реальными кадрами тачпада: опорные точки → МНК → аффинное преобразование,
-/// которое затем проверяется «сухим» экземпляром того же движка (KeyPressEngine без вывода клавиш).
+/// Мастер калибровки на реальных кадрах тачпада: опорные клавиши → МНК → аффинное преобразование, которое затем
+/// проверяется «вхолостую» тем же движком (KeyPressEngine без вывода клавиш).
 /// </summary>
 public partial class CalibrationPage : UserControl, IPage, IDisposable
 {
-    /// <summary>Вывод в никуда: проверка калибровки не должна нажимать клавиши в других программах.</summary>
+    /// <summary>Вывод в никуда: проверка калибровки не нажимает клавиши в других программах.</summary>
     private sealed class DryRunKeyboard : IKeyboardOutput
     {
         public bool KeyDown(KeyDefinition key) => true;
@@ -31,6 +31,7 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
     private enum Step { Prepare, Capture, Test }
 
     private readonly AppController _app;
+    private readonly List<string> _recognized = new();
     private Step _step = Step.Prepare;
     private CalibrationSession? _session;
     private CalibrationResult? _result;
@@ -39,13 +40,28 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
     private Layout _layout;
     private bool _loading;
     private bool _live;
-    private readonly List<string> _recognized = new();
+
+    public CalibrationPage() : this(null!) { }
 
     public CalibrationPage(AppController app)
     {
         _app = app;
-        _layout = app.ActiveLayout;
+        _layout = app?.ActiveLayout ?? BuiltInLayouts.Num20();
         InitializeComponent();
+        if (app is null) return;
+
+        DeviceBox.SelectionChanged += (_, _) => { if (!_loading) LoadPrepare(); };
+        LayoutBox.SelectionChanged += (_, _) => { if (!_loading && LayoutBox.SelectedItem is Choice<Layout> l) _layout = l.Value; };
+        StartButton.Click += async (_, _) => await StartCapture();
+        RepeatButton.Click += async (_, _) => await StartCapture();
+        TestCurrentButton.Click += (_, _) => OnTestCurrent();
+        ResetCalibrationButton.Click += async (_, _) => await OnResetCalibration();
+        ManualButton.Click += (_, _) => OnManualApply();
+        UndoPointButton.Click += (_, _) => { _session?.UndoLast(); UpdateCapture(); };
+        RestartButton.Click += (_, _) => { _session?.Restart(); UpdateCapture(); };
+        CancelCaptureButton.Click += (_, _) => Cancel();
+        CancelTestButton.Click += (_, _) => Cancel();
+        SaveCalibrationButton.Click += async (_, _) => await OnSave();
         ShowStep(Step.Prepare);
     }
 
@@ -54,14 +70,15 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
     public void OnShown()
     {
         if (!_live) { _app.FrameArrived += OnFrame; _live = true; }
-        LoadPrepare();
+        if (_step == Step.Prepare) LoadPrepare();
     }
 
-    public bool OnLeaving()
+    public Task<bool> CanLeaveAsync() => Task.FromResult(true);
+
+    public void OnHidden()
     {
         if (_live) { _app.FrameArrived -= OnFrame; _live = false; }
-        if (_step != Step.Prepare) ShowStep(Step.Prepare);
-        return true;
+        if (_step != Step.Prepare) Cancel();
     }
 
     public void Dispose()
@@ -71,24 +88,27 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
 
     // ================================================================= шаг 1
 
-    private TouchpadDeviceInfo? SelectedDevice => DeviceBox.SelectedItem as TouchpadDeviceInfo ?? _app.ActiveDevice;
+    private TouchpadDeviceInfo? SelectedDevice => (DeviceBox.SelectedItem as Choice<TouchpadDeviceInfo>)?.Value ?? _app.ActiveDevice;
 
     private void LoadPrepare()
     {
         _loading = true;
-        var devices = _app.Touchpad.Devices.Where(d => d.IsUsable).ToList();
+        var devices = _app.Platform.Touchpad.Devices.Where(d => d.IsUsable).Select(d => new Choice<TouchpadDeviceInfo>(d, d.DisplayName)).ToList();
+        var prevId = (DeviceBox.SelectedItem as Choice<TouchpadDeviceInfo>)?.Value.Id ?? _app.ActiveDevice?.Id;
         DeviceBox.ItemsSource = devices;
-        DeviceBox.SelectedItem = devices.FirstOrDefault(d => d.DeviceKey == _app.ActiveDevice?.DeviceKey) ?? devices.FirstOrDefault();
-        LayoutBox.ItemsSource = _app.Layouts;
-        LayoutBox.SelectedItem = _app.Layouts.FirstOrDefault(l => l.Id == _layout.Id) ?? _app.Layouts.FirstOrDefault(l => l.Id == _app.ActiveLayout.Id);
-        if (LayoutBox.SelectedItem is Layout l) _layout = l;
+        DeviceBox.SelectedItem = devices.FirstOrDefault(d => d.Value.Id == prevId) ?? devices.FirstOrDefault();
+        var layouts = _app.Layouts.Select(l => new Choice<Layout>(l, l.Name)).ToList();
+        LayoutBox.ItemsSource = layouts;
+        var sel = layouts.FirstOrDefault(l => l.Value.Id == _layout.Id) ?? layouts.FirstOrDefault(l => l.Value.Id == _app.ActiveLayout.Id);
+        LayoutBox.SelectedItem = sel;
+        if (sel is not null) _layout = sel.Value;
         _loading = false;
 
-        StartButton.IsEnabled = SelectedDevice is not null;
         var dev = SelectedDevice;
+        StartButton.IsEnabled = TestCurrentButton.IsEnabled = ResetCalibrationButton.IsEnabled = ManualButton.IsEnabled = dev is not null;
         if (dev is null)
         {
-            CurrentCalibration.Text = _app.InputError ?? "Precision Touchpad не найден — калибровка невозможна.";
+            CurrentCalibration.Text = _app.InputError ?? "Тачпад не найден — калибровка невозможна.";
             return;
         }
         var cal = _app.Settings.Devices.TryGetValue(dev.DeviceKey, out var p) ? p.Calibration : new CalibrationData();
@@ -105,50 +125,44 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
         ManualError.Text = "";
     }
 
-    private void OnDeviceChanged(object sender, SelectionChangedEventArgs e) { if (!_loading) LoadPrepare(); }
-
-    private void OnLayoutChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_loading || LayoutBox.SelectedItem is not Layout l) return;
-        _layout = l;
-    }
-
-    private void OnStart(object sender, RoutedEventArgs e)
+    private async Task StartCapture()
     {
         if (SelectedDevice is null) return;
         _app.DisableMode("calibration");
-        _session = new CalibrationSession(_layout);
-        if (_session.Targets.Count < 3)
+        var session = new CalibrationSession(_layout);
+        if (session.Targets.Count < 3)
         {
-            MessageBox.Show("В раскладке слишком мало клавиш для калибровки (нужно минимум 3).", "Калибровка", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await Dialogs.InfoAsync(this, "Калибровка", "В раскладке слишком мало клавиш для калибровки (нужно минимум 3).");
             return;
         }
-        _session.PointCaptured += _ => Dispatcher.InvokeAsync(UpdateCapture);
+        session.PointCaptured += _ => Dispatcher.UIThread.Post(UpdateCapture);
+        _session = session;
+        _result = null;
         CaptureCanvas.Layout = _layout;
         ShowStep(Step.Capture);
         UpdateCapture();
     }
 
-    private void OnTestCurrent(object sender, RoutedEventArgs e)
+    private void OnTestCurrent()
     {
         var dev = SelectedDevice;
         if (dev is null) return;
         var t = _app.Settings.Devices.TryGetValue(dev.DeviceKey, out var p) ? p.Calibration.ToTransform() : AffineTransform.Identity;
         _result = null;
+        _session = null;
         StartTest(t.IsValid ? t : AffineTransform.Identity, "Проверка текущей калибровки", "");
     }
 
-    private void OnResetCalibration(object sender, RoutedEventArgs e)
+    private async Task OnResetCalibration()
     {
         var dev = SelectedDevice;
         if (dev is null) return;
-        if (MessageBox.Show("Сбросить калибровку? Наклейка будет считаться занимающей весь тачпад.", "Калибровка",
-                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (!await Dialogs.ConfirmAsync(this, "Калибровка", "Сбросить калибровку? Наклейка будет считаться занимающей весь тачпад.")) return;
         _app.ResetCalibration(dev.DeviceKey);
         LoadPrepare();
     }
 
-    private void OnManualApply(object sender, RoutedEventArgs e)
+    private void OnManualApply()
     {
         double? l = Parse(LeftBox.Text), t = Parse(TopBox.Text), r = Parse(RightBox.Text), b = Parse(BottomBox.Text);
         if (l is null || t is null || r is null || b is null) { ManualError.Text = "Введите четыре числа."; return; }
@@ -158,6 +172,7 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
         _app.DisableMode("calibration");
         var tr = AffineTransform.FromDeviceRect(RectD.FromEdges(l.Value / 100, t.Value / 100, r.Value / 100, b.Value / 100));
         _result = null;
+        _session = null;
         StartTest(tr, "Проверка заданных вручную границ", "Если клавиши распознаются верно — сохраните.");
     }
 
@@ -165,15 +180,15 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
 
     private void UpdateCapture()
     {
-        if (_session is null) return;
+        if (_session is null || _step != Step.Capture) return;
         if (_session.IsComplete)
         {
             _result = _session.Solve();
             if (!_result.Success)
             {
-                MessageBox.Show(_result.Message, "Калибровка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                CaptureProgress.Text = _result.Message;
                 _session.Restart();
-                UpdateCapture();
+                UpdateCaptureTarget();
                 return;
             }
             string details = FormattableString.CurrentCulture(
@@ -181,17 +196,19 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
             StartTest(_result.Transform, _result.Message, details);
             return;
         }
-        var target = _session.CurrentTarget!;
-        CaptureInstruction.Text = $"Коснитесь клавиши «{target.Label}» на наклейке и отпустите";
+        UpdateCaptureTarget();
         CaptureProgress.Text = $"Точка {_session.CurrentIndex + 1} из {_session.Targets.Count}";
+    }
+
+    private void UpdateCaptureTarget()
+    {
+        var target = _session!.CurrentTarget!;
+        CaptureInstruction.Text = $"Коснитесь клавиши «{target.Label}» на наклейке и отпустите";
         CaptureCanvas.TargetKeyId = target.KeyId;
         CaptureCanvas.Marks = _session.Points.Select(p => p.Target).ToList();
     }
 
-    private void OnUndoPoint(object sender, RoutedEventArgs e) { _session?.UndoLast(); UpdateCapture(); }
-    private void OnRestart(object sender, RoutedEventArgs e) { _session?.Restart(); UpdateCapture(); }
-
-    private void OnCancel(object sender, RoutedEventArgs e)
+    private void Cancel()
     {
         _session = null;
         _testEngine = null;
@@ -209,48 +226,43 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
         _testEngine.EventRaised += ev =>
         {
             if (ev.Kind != EngineEventKind.KeyPressed || ev.ZoneId is null) return;
-            var label = _layout.Keys.FirstOrDefault(k => k.Id == ev.ZoneId)?.Label ?? ev.ZoneId;
-            _recognized.Add(label);
+            _recognized.Add(_layout.Keys.FirstOrDefault(k => k.Id == ev.ZoneId)?.Label ?? ev.ZoneId);
             if (_recognized.Count > 16) _recognized.RemoveAt(0);
         };
         _recognized.Clear();
         TestCanvas.Layout = _layout;
         ResultTitle.Text = title;
         ResultDetails.Text = details;
-        bool poor = _result is { MaxError: > 0.12 };
-        ResultTitle.Foreground = poor ? (Brush)FindResource("WarningBrush") : (Brush)FindResource("TextBrush");
+        ResultTitle.Foreground = _result is { MaxError: > 0.12 } ? Res("WarningBrush") : Res("TextBrush");
         TestLog.Text = "Распознано: —";
         ShowStep(Step.Test);
     }
 
-    private void OnSave(object sender, RoutedEventArgs e)
+    private async Task OnSave()
     {
         var dev = SelectedDevice;
         if (dev is null || _candidate is null) return;
         var data = CalibrationData.FromTransform(_candidate, _result?.RmsError, _layout.Id, _session?.Points);
         _app.SaveCalibration(dev.DeviceKey, dev.DisplayName, data);
-        if (_app.ActiveLayout.Id != _layout.Id &&
-            MessageBox.Show($"Сделать раскладку «{_layout.Name}» активной?", "Калибровка", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+        if (_app.ActiveLayout.Id != _layout.Id && await Dialogs.ConfirmAsync(this, "Калибровка", $"Сделать раскладку «{_layout.Name}» активной?"))
             _app.SetActiveLayout(_layout.Id);
         if (dev.DeviceKey != _app.ActiveDevice?.DeviceKey) _app.SelectDevice(dev.DeviceKey);
-        _session = null;
-        _testEngine = null;
-        ShowStep(Step.Prepare);
-        LoadPrepare();
-        MessageBox.Show("Калибровка сохранена и применена.", "Калибровка", MessageBoxButton.OK, MessageBoxImage.Information);
+        Cancel();
+        await Dialogs.InfoAsync(this, "Калибровка", "Калибровка сохранена и применена.");
     }
 
     // ================================================================= кадры
 
     private void OnFrame(TouchpadDeviceInfo device, TouchFrame frame)
     {
-        if (SelectedDevice?.Handle != device.Handle) return;
+        if (SelectedDevice?.Id != device.Id) return;
         switch (_step)
         {
             case Step.Capture when _session is not null:
                 _session.OnFrame(frame);
+                // Во время сбора точек новой калибровки ещё нет — касание показываем через текущую (приблизительно).
                 CaptureCanvas.Contacts = frame.Contacts.Where(c => c.Tip)
-                    .Select(c => new ActiveContactInfo(c.Id, Approx(c.Position), null, false, false)).ToList();
+                    .Select(c => new ActiveContactInfo(c.Id, _app.Engine.ToArea(c.Position), null, false, false)).ToList();
                 break;
             case Step.Test when _testEngine is not null:
                 _testEngine.ProcessFrame(frame);
@@ -263,28 +275,25 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
         }
     }
 
-    /// <summary>Во время сбора точек калибровки ещё нет — показываем касание через текущую калибровку (приблизительно).</summary>
-    private PointD Approx(PointD device) => _app.Engine.ToArea(device);
-
     // ================================================================= служебное
+
+    private static IBrush Res(string key) => Ui.Brush(key);
 
     private void ShowStep(Step step)
     {
         _step = step;
-        PrepareStep.Visibility = step == Step.Prepare ? Visibility.Visible : Visibility.Collapsed;
-        CaptureStep.Visibility = step == Step.Capture ? Visibility.Visible : Visibility.Collapsed;
-        TestStep.Visibility = step == Step.Test ? Visibility.Visible : Visibility.Collapsed;
-        var on = (Brush)FindResource("AccentBrush");
-        var off = new SolidColorBrush(Color.FromRgb(0xE4, 0xE4, 0xE0));
-        Step1Badge.Background = step == Step.Prepare ? on : off;
-        Step2Badge.Background = step == Step.Capture ? on : off;
-        Step3Badge.Background = step == Step.Test ? on : off;
-        if (step != Step.Capture) { CaptureCanvas.Contacts = Array.Empty<ActiveContactInfo>(); }
+        PrepareStep.IsVisible = step == Step.Prepare;
+        CaptureStep.IsVisible = step == Step.Capture;
+        TestStep.IsVisible = step == Step.Test;
+        Step1Badge.Background = step == Step.Prepare ? Res("AccentBrush") : Res("BadgeOffBrush");
+        Step2Badge.Background = step == Step.Capture ? Res("AccentBrush") : Res("BadgeOffBrush");
+        Step3Badge.Background = step == Step.Test ? Res("AccentBrush") : Res("BadgeOffBrush");
+        if (step != Step.Capture) { CaptureCanvas.Contacts = Array.Empty<ActiveContactInfo>(); CaptureCanvas.TargetKeyId = null; }
         if (step != Step.Test) { TestCanvas.Contacts = Array.Empty<ActiveContactInfo>(); TestCanvas.ActiveKeyIds.Clear(); }
     }
 
     private static string Num(double v) => v.ToString("0.#", CultureInfo.CurrentCulture);
 
-    private static double? Parse(string s) =>
-        double.TryParse(s.Trim().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && double.IsFinite(v) ? v : null;
+    private static double? Parse(string? s) =>
+        double.TryParse((s ?? "").Trim().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && double.IsFinite(v) ? v : null;
 }
