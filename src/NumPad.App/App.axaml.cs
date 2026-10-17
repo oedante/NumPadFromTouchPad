@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using NumPad.App.Services;
 using NumPad.App.Views;
+using NumPad.Core.Diagnostics;
 
 namespace NumPad.App;
 
@@ -114,7 +115,8 @@ public partial class App : Application
     /// </summary>
     private async Task RunSelfTestAsync()
     {
-        string resultPath = Environment.GetEnvironmentVariable("NUMPAD_SELFTEST_RESULT") ?? Path.Combine(_controller!.Store.RootDir, "selftest-result.txt");
+        var controller = _controller!;
+        string resultPath = Environment.GetEnvironmentVariable("NUMPAD_SELFTEST_RESULT") ?? Path.Combine(controller.Store.RootDir, "selftest-result.txt");
         try
         {
             ShowMainWindow();
@@ -123,14 +125,14 @@ public partial class App : Application
                 await _window!.NavigateAsync(tag);
                 await Task.Delay(300);
             }
-            File.WriteAllText(resultPath, "OK " + _controller.DiagnosticsSummary().Replace(Environment.NewLine, " | "));
-            _controller.Log.Info("Самопроверка пройдена.");
+            File.WriteAllText(resultPath, "OK " + controller.DiagnosticsSummary().Replace(Environment.NewLine, " | "));
+            controller.Log.Info("Самопроверка пройдена.");
             ExitApplication();
         }
         catch (Exception ex)
         {
             File.WriteAllText(resultPath, "FAIL " + ex);
-            _controller!.Log.Error("Самопроверка не пройдена", ex);
+            controller.Log.Error("Самопроверка не пройдена", ex);
             _exiting = true;
             _desktop?.Shutdown(2);
         }
