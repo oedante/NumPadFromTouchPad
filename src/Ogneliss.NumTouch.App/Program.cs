@@ -1,4 +1,5 @@
 using Avalonia;
+using Ogneliss.NumTouch.App.Services;
 
 namespace Ogneliss.NumTouch.App;
 
@@ -27,6 +28,6 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
-            .WithInterFont()
+            .With(PlatformTheme.FontOptions()) // системный шрифт: Segoe UI / San Francisco / шрифт Linux
             .LogToTrace();
 }

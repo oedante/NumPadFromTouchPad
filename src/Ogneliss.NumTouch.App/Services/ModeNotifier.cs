@@ -46,7 +46,7 @@ public sealed class ModeNotifier : IDisposable
 
     private (string Title, string? Subtitle, OsdKind Kind) Describe(InputMode mode, string reason)
     {
-        string? hotkey = _controller.HotkeyRegistered ? _controller.CurrentHotkeyText : null;
+        string? hotkey = _controller.HotkeyRegistered ? PlatformTheme.HotkeyText(_controller.CurrentHotkeyText) : null;
         if (reason == "no device")
             return (L.T("Touchpad not found"), _controller.InputError, OsdKind.Error);
         if (mode == InputMode.NumPad)

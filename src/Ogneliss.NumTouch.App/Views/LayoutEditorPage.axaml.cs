@@ -63,6 +63,14 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
 
         LayoutBox.SelectionChanged += async (_, _) => await OnLayoutSelected();
         BuildLayoutMenu();
+        // Подсказки с клавишами в обозначениях текущей ОС (⌘, ⌥ и ⌫ в macOS).
+        string alt = PlatformTheme.AltKeyName, shift = PlatformTheme.ShiftKeyName;
+        string del = PlatformTheme.Os == OsFamily.MacOS ? "⌫" : "Delete";
+        ToolTip.SetTip(UndoButton, L.F("Undo ({0})", PlatformTheme.Shortcut("Ctrl+Z")));
+        ToolTip.SetTip(RedoButton, L.F("Redo ({0})", PlatformTheme.Os == OsFamily.MacOS ? "⇧⌘Z" : "Ctrl+Y"));
+        ToolTip.SetTip(DeleteKeyButton, L.F("Delete the selected key ({0})", del));
+        ToolTip.SetTip(SnapToggle, L.F("Snap to neighboring keys, the layout gap, the edges and the grid. Hold {0} while dragging to place freely.", alt));
+        EditorHint.Text = L.F("Drag a key to move it; drag any edge or corner to resize. Keys snap to neighbors, the layout gap and the grid; {0} places freely, {1} moves along one axis. Arrows move the selected key, {0}+arrows resize it, {2} removes it. Live touches are drawn on top.", alt, shift, del);
         SaveButton.Click += async (_, _) => await TrySave(apply: false);
         SaveApplyButton.Click += async (_, _) => await TrySave(apply: true);
         RevertButton.Click += (_, _) => Revert();
@@ -454,8 +462,8 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
         bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
-        if (ctrl && e.Key == Key.Z) { Undo(); e.Handled = true; return; }
-        if (ctrl && e.Key == Key.Y) { Redo(); e.Handled = true; return; }
+        if (ctrl && e.Key == Key.Z && !e.KeyModifiers.HasFlag(KeyModifiers.Shift)) { Undo(); e.Handled = true; return; }
+        if (ctrl && (e.Key == Key.Y || (e.Key == Key.Z && e.KeyModifiers.HasFlag(KeyModifiers.Shift)))) { Redo(); e.Handled = true; return; }
         var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
         if (focused is not LayoutCanvas) return;
 

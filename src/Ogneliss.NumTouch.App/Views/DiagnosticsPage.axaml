@@ -16,13 +16,13 @@
             <Border Classes="card">
                 <StackPanel>
                     <TextBlock Classes="section" Text="{l:T 'Devices'}" />
-                    <SelectableTextBlock x:Name="DevicesText" FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="12" TextWrapping="Wrap" />
+                    <SelectableTextBlock x:Name="DevicesText" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
             <Border Grid.Column="2" Classes="card">
                 <StackPanel>
                     <TextBlock Classes="section" Text="{l:T 'Status'}" />
-                    <SelectableTextBlock x:Name="SummaryText" FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="12" TextWrapping="Wrap" />
+                    <SelectableTextBlock x:Name="SummaryText" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
         </Grid>
@@ -37,7 +37,7 @@
             <Border Grid.Column="2" Classes="card" Margin="0">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Classes="section" Text="{l:T 'Log'}" />
-                    <TextBox x:Name="LogText" FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="11" IsReadOnly="True"
+                    <TextBox x:Name="LogText" FontFamily="{DynamicResource MonoFontFamily}" FontSize="11" IsReadOnly="True"
                              TextWrapping="Wrap" AcceptsReturn="True" BorderThickness="0" />
                 </DockPanel>
             </Border>

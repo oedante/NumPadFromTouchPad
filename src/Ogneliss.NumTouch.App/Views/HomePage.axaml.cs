@@ -70,8 +70,9 @@ public partial class HomePage : UserControl, IPage, IDisposable
         try
         {
             bool on = _app.Mode.IsNumPad;
-            ModeBadge.Background = on ? Res("AccentBrush") : Res("BadgeOffBrush");
+            ModeBadge.Background = on ? Res("SystemControlHighlightAccentBrush") : Res("BadgeOffBrush");
             ModeBadgeText.Text = on ? L.T("ON") : L.T("OFF");
+            ModeBadgeText.Foreground = on ? Avalonia.Media.Brushes.White : Res("TextBrush");
             ModeTitle.Text = on ? L.T("NumPad mode is on") : L.T("NumPad mode is off");
             ModeHint.Text = on
                 ? L.T("Touching the touchpad zones produces keypresses; the cursor is blocked in the key area.")
@@ -105,7 +106,7 @@ public partial class HomePage : UserControl, IPage, IDisposable
                     ? L.F("Calibrated, error {0}% of the size", (e * 100).ToString("0.0"))
                     : L.T("Bounds set manually");
 
-            HotkeyText.Text = _app.CurrentHotkeyText;
+            HotkeyText.Text = PlatformTheme.HotkeyText(_app.CurrentHotkeyText);
             HotkeyStatus.Text = _app.HotkeyError ?? (_app.HotkeyRegistered ? _app.Platform.Hotkey.Limitation ?? L.T("Works in any program") : L.T("Not assigned"));
             HotkeyStatus.Foreground = _app.HotkeyError is null ? Res("SubtleTextBrush") : Res("ErrorBrush");
 

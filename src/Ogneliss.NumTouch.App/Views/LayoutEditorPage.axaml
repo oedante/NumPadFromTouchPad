@@ -7,11 +7,11 @@
         <!-- Заголовок и сохранение -->
         <DockPanel Grid.Row="0" Margin="0,0,0,14">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <TextBlock x:Name="DirtyMark" Text="{l:T '● unsaved changes'}" Foreground="{StaticResource WarningBrush}"
+                <TextBlock x:Name="DirtyMark" Text="{l:T '● unsaved changes'}" Foreground="{DynamicResource WarningBrush}"
                            VerticalAlignment="Center" IsVisible="False" Margin="0,0,4,0" />
                 <Button x:Name="RevertButton" Content="{l:T 'Discard changes'}" />
                 <Button x:Name="SaveButton" Content="{l:T 'Save'}" />
-                <Button x:Name="SaveApplyButton" Content="{l:T 'Save and apply'}" Classes="primary" />
+                <Button x:Name="SaveApplyButton" Content="{l:T 'Save and apply'}" Classes="accent" />
             </StackPanel>
             <TextBlock Classes="title" Text="{l:T 'Layouts'}" VerticalAlignment="Center" />
         </DockPanel>
@@ -40,19 +40,18 @@
                 <Button x:Name="AddKeyBelowButton" Classes="tool" ToolTip.Tip="{l:T 'Add a key below the selected one'}">
                     <PathIcon Width="16" Height="16" Data="M4,1 H12 V9 H4 Z M5.5,2.5 V7.5 H10.5 V2.5 Z M7.25,10 H8.75 V12.25 H11 V13.75 H8.75 V16 H7.25 V13.75 H5 V12.25 H7.25 Z" />
                 </Button>
-                <Button x:Name="DeleteKeyButton" Classes="tool" ToolTip.Tip="{l:T 'Delete the selected key (Delete)'}">
+                <Button x:Name="DeleteKeyButton" Classes="tool">
                     <PathIcon Width="14" Height="14" Data="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z" />
                 </Button>
-                <Border Width="1" Height="22" Background="{StaticResource LineBrush}" Margin="6,0" />
-                <Button x:Name="UndoButton" Classes="tool" ToolTip.Tip="{l:T 'Undo (Ctrl+Z)'}">
+                <Border Width="1" Height="22" Background="{DynamicResource LineBrush}" Margin="6,0" />
+                <Button x:Name="UndoButton" Classes="tool">
                     <PathIcon Width="15" Height="15" Data="M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z" />
                 </Button>
-                <Button x:Name="RedoButton" Classes="tool" ToolTip.Tip="{l:T 'Redo (Ctrl+Y)'}">
+                <Button x:Name="RedoButton" Classes="tool">
                     <PathIcon Width="15" Height="15" Data="M18.4,10.6C16.55,9 14.15,8 11.5,8C6.85,8 2.92,11.03 1.54,15.22L3.9,16C4.95,12.81 7.95,10.5 11.5,10.5C13.45,10.5 15.23,11.22 16.62,12.38L13,16H22V7L18.4,10.6Z" />
                 </Button>
-                <Border Width="1" Height="22" Background="{StaticResource LineBrush}" Margin="6,0" />
-                <ToggleButton x:Name="SnapToggle" IsChecked="True" Classes="tool"
-                              ToolTip.Tip="{l:T 'Snap to neighboring keys, the layout gap, the edges and the grid. Hold Alt while dragging to place freely.'}">
+                <Border Width="1" Height="22" Background="{DynamicResource LineBrush}" Margin="6,0" />
+                <ToggleButton x:Name="SnapToggle" IsChecked="True" Classes="tool">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Width="14" Height="14" Data="M3,3H11V5H5V11H3V3M13,3H21V11H19V5H13V3M3,13H5V19H11V21H3V13M19,13H21V21H13V19H19V13M8,8H16V16H8V8Z" />
                         <TextBlock Text="{l:T 'Snap'}" VerticalAlignment="Center" />
@@ -64,8 +63,7 @@
         <Grid Grid.Row="2" ColumnDefinitions="*,16,300">
             <Border Classes="card" Padding="8" Margin="0">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Bottom" Classes="subtle" FontSize="12" Margin="8,6,8,2"
-                               Text="{l:T 'Drag a key to move it; drag any edge or corner to resize. Keys snap to neighbors, the layout gap and the grid; Alt places freely, Shift moves along one axis. Arrows move the selected key, Alt+arrows resize it, Delete removes it. Live touches are drawn on top.'}" />
+                    <TextBlock x:Name="EditorHint" DockPanel.Dock="Bottom" Classes="subtle" FontSize="12" Margin="8,6,8,2" />
                     <c:LayoutCanvas x:Name="EditorCanvas" />
                 </DockPanel>
             </Border>
@@ -89,7 +87,7 @@
                         <CheckBox x:Name="PointerOutsideBox" Content="{l:T 'Cursor outside keys'}" Margin="0,8,0,0"
                                   ToolTip.Tip="{l:T 'Touches outside the key rectangle move the cursor (like the trackpad zone in NUM10)'}" />
 
-                        <Border Height="1" Background="{StaticResource LineBrush}" Margin="0,14,0,12" />
+                        <Border Height="1" Background="{DynamicResource LineBrush}" Margin="0,14,0,12" />
 
                         <TextBlock x:Name="KeyHeader" Classes="section" Text="{l:T 'Key'}" />
                         <StackPanel x:Name="KeyPanel">

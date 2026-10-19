@@ -1,70 +1,70 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Ogneliss.NumTouch.App.App"
-             RequestedThemeVariant="Light"
+             RequestedThemeVariant="Default"
              Name="Ogneliss NumTouch">
-    <Application.Resources>
-        <!-- Палитра: тёмная боковая панель и жёлтый акцент из исходного проекта, светлая рабочая область. -->
-        <SolidColorBrush x:Key="AccentBrush" Color="#FFD964" />
-        <SolidColorBrush x:Key="AccentDarkBrush" Color="#E0B93A" />
-        <SolidColorBrush x:Key="SidebarBrush" Color="#323232" />
-        <SolidColorBrush x:Key="SidebarHoverBrush" Color="#464646" />
-        <SolidColorBrush x:Key="PageBrush" Color="#F3F3F1" />
-        <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="LineBrush" Color="#DEDEDA" />
-        <SolidColorBrush x:Key="TextBrush" Color="#1E1E1E" />
-        <SolidColorBrush x:Key="SubtleTextBrush" Color="#6A6A66" />
-        <SolidColorBrush x:Key="OnBrush" Color="#2E9E5B" />
-        <SolidColorBrush x:Key="ErrorBrush" Color="#C0392B" />
-        <SolidColorBrush x:Key="WarningBrush" Color="#B7791F" />
-        <SolidColorBrush x:Key="BadgeOffBrush" Color="#E4E4E0" />
-        <SolidColorBrush x:Key="HintBrush" Color="#FFF6D9" />
-    </Application.Resources>
-
+    <!--
+      Вид как у системы: тема (светлая/тёмная) и акцентный цвет — из настроек ОС (FluentTheme), шрифт — системный
+      (Program.BuildAvaloniaApp), собственные кисти для обеих тем — Services/PlatformTheme.cs. Всё, что зависит от
+      темы, подключается через DynamicResource. Стили конкретной ОС — по классу окна: Window.win / .mac / .linux.
+    -->
     <Application.Styles>
         <FluentTheme />
 
+        <!-- ───────────── Окна и текст ───────────── -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource PageBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        </Style>
         <Style Selector="TextBlock.title">
-            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontSize" Value="{DynamicResource PageTitleFontSize}" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+        <Style Selector="Window.mac TextBlock.title">
+            <Setter Property="FontWeight" Value="Bold" />
         </Style>
         <Style Selector="TextBlock.section">
-            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontSize" Value="{DynamicResource SectionFontSize}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Margin" Value="0,0,0,8" />
         </Style>
         <Style Selector="TextBlock.subtle">
-            <Setter Property="Foreground" Value="{StaticResource SubtleTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource SubtleTextBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <Style Selector="TextBlock.label">
-            <Setter Property="Foreground" Value="{StaticResource SubtleTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource SubtleTextBrush}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Margin" Value="0,8,0,3" />
         </Style>
         <Style Selector="TextBlock.mono">
-            <Setter Property="FontFamily" Value="Consolas,Menlo,DejaVu Sans Mono,monospace" />
+            <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
+        <Style Selector="TextBlock.field">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource SubtleTextBrush}" />
+        </Style>
+
+        <!-- ───────────── Карточки: радиус как в системе ───────────── -->
         <Style Selector="Border.card">
-            <Setter Property="Background" Value="{StaticResource CardBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="Background" Value="{DynamicResource CardBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="16" />
             <Setter Property="Margin" Value="0,0,0,12" />
         </Style>
-        <Style Selector="Button.primary">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-            <Setter Property="FontWeight" Value="SemiBold" />
+        <Style Selector="Window.mac Border.card">
+            <Setter Property="CornerRadius" Value="10" />
         </Style>
-        <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource AccentDarkBrush}" />
+        <Style Selector="Window.linux Border.card">
+            <Setter Property="CornerRadius" Value="12" />
         </Style>
+
         <Style Selector="Button.danger">
-            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
         </Style>
 
         <!-- Выпадающие списки: длинные названия обрезаются многоточием, полный текст — во всплывающей подсказке. -->
@@ -76,74 +76,90 @@
             </Setter>
         </Style>
 
-        <!-- Компактные кнопки панели инструментов (значок + подсказка). -->
+        <!-- Компактные кнопки панели инструментов (значок + подсказка); включённая — акцентным цветом системы. -->
         <Style Selector="Button.tool, ToggleButton.tool">
             <Setter Property="Padding" Value="9,6" />
             <Setter Property="MinHeight" Value="32" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
-        <Style Selector="ToggleButton.tool:checked /template/ ContentPresenter">
-            <Setter Property="Background" Value="#FFF0BF" />
-            <Setter Property="BorderBrush" Value="{StaticResource AccentDarkBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-        </Style>
-        <Style Selector="ToggleButton.tool:checked:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#FFE79A" />
-        </Style>
 
-        <!-- Подпись клавиши-сочетания, похожая на клавишу. -->
+        <!-- Подпись клавиши-сочетания в виде клавиши. -->
         <Style Selector="Border.keycap">
-            <Setter Property="Background" Value="#F3F3F1" />
-            <Setter Property="BorderBrush" Value="#CFCFCA" />
+            <Setter Property="Background" Value="{DynamicResource KeycapBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource KeycapBorderBrush}" />
             <Setter Property="BorderThickness" Value="1,1,1,2" />
             <Setter Property="CornerRadius" Value="5" />
             <Setter Property="Padding" Value="8,3" />
         </Style>
-        <Style Selector="Border.keycap.dark">
-            <Setter Property="Background" Value="#4A4A4A" />
-            <Setter Property="BorderBrush" Value="#5E5E5E" />
-        </Style>
 
-        <Style Selector="TextBlock.field">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="{StaticResource SubtleTextBrush}" />
-        </Style>
-
-        <Style Selector="Button.sidebar">
-            <Setter Property="Background" Value="#4A4A4A" />
-            <Setter Property="Foreground" Value="#E6E6E6" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-        </Style>
-        <Style Selector="Button.sidebar:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#575757" />
-            <Setter Property="Foreground" Value="White" />
-        </Style>
-
-        <!-- Навигация -->
+        <!-- ───────────── Боковая панель ───────────── -->
+        <!-- Windows 11: пункт со скруглением 4 и акцентной полоской слева (как NavigationView). -->
         <Style Selector="Button.nav">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#E6E6E6" />
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="Height" Value="42" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Margin" Value="6,1" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="CornerRadius" Value="4" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Padding" Value="18,0,12,0" />
-            <Setter Property="CornerRadius" Value="0" />
-            <Setter Property="BorderThickness" Value="4,0,0,0" />
-            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
         <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SidebarHoverBrush}" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="{DynamicResource NavHoverBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        </Style>
+        <Style Selector="Button.nav:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource NavSelectedBrush}" />
         </Style>
         <Style Selector="Button.nav.selected">
-            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-            <Setter Property="Background" Value="#3E3E3E" />
+            <Setter Property="Background" Value="{DynamicResource NavSelectedBrush}" />
         </Style>
         <Style Selector="Button.nav.selected:pointerover /template/ ContentPresenter">
-            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Background" Value="{DynamicResource NavSelectedBrush}" />
+        </Style>
+        <Style Selector="Button.nav PathIcon">
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Height" Value="16" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+        </Style>
+        <Style Selector="Window.mac Button.nav PathIcon">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+        </Style>
+        <Style Selector="Button.nav Border.pill">
+            <Setter Property="Width" Value="3" />
+            <Setter Property="Height" Value="16" />
+            <Setter Property="CornerRadius" Value="1.5" />
+            <Setter Property="Margin" Value="-6,0,9,0" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}" />
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Window.win Button.nav.selected Border.pill">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <!-- macOS: компактные пункты, выделение — акцентным цветом системы с белым текстом. -->
+        <Style Selector="Window.mac Button.nav">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="10,1" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+        <Style Selector="Window.mac Button.nav.selected">
+            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Window.mac Button.nav.selected:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <!-- Linux (GNOME): скругление 6, выделение серым, без полоски. -->
+        <Style Selector="Window.linux Button.nav">
+            <Setter Property="CornerRadius" Value="6" />
         </Style>
     </Application.Styles>
 </Application>

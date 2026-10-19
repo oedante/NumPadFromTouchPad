@@ -25,10 +25,12 @@ public sealed class Tray : IDisposable
         _app = app;
         _controller = controller;
         // Windows: ICO с размерами 16…48 — система берёт точный размер под масштаб экрана (без размытия);
-        // Linux/macOS: PNG 64 px.
-        string ext = OperatingSystem.IsWindows() ? "ico" : "png";
-        _iconOn = new WindowIcon(AssetLoader.Open(new Uri($"avares://OgnelissNumTouch/Assets/tray_on.{ext}")));
-        _iconOff = new WindowIcon(AssetLoader.Open(new Uri($"avares://OgnelissNumTouch/Assets/tray_off.{ext}")));
+        // macOS: шаблон (чёрный силуэт) — строка меню сама красит его под светлую/тёмную тему, как у системных значков;
+        // Linux: цветной PNG 64 px.
+        string on = PlatformTheme.Os switch { OsFamily.Windows => "tray_on.ico", OsFamily.MacOS => "tray_mac_on.png", _ => "tray_on.png" };
+        string off = PlatformTheme.Os switch { OsFamily.Windows => "tray_off.ico", OsFamily.MacOS => "tray_mac_off.png", _ => "tray_off.png" };
+        _iconOn = new WindowIcon(AssetLoader.Open(new Uri($"avares://OgnelissNumTouch/Assets/{on}")));
+        _iconOff = new WindowIcon(AssetLoader.Open(new Uri($"avares://OgnelissNumTouch/Assets/{off}")));
 
         _toggle = new NativeMenuItem();
         _toggle.Click += (_, _) => _controller.ToggleMode("tray");
@@ -46,6 +48,7 @@ public sealed class Tray : IDisposable
         menu.Add(_exit);
 
         _icon = new TrayIcon { Icon = _iconOff, ToolTipText = "Ogneliss NumTouch", Menu = menu, IsVisible = true };
+        if (PlatformTheme.Os == OsFamily.MacOS) MacOSProperties.SetIsTemplateIcon(_icon, true);
         // Щелчок открывает окно, а не переключает режим — защита от случайного переключения.
         _icon.Clicked += (_, _) => OpenRequested?.Invoke();
         TrayIcon.SetIcons(app, new TrayIcons { _icon });
@@ -59,7 +62,7 @@ public sealed class Tray : IDisposable
     {
         bool on = _controller.Mode.IsNumPad;
         _icon.Icon = on ? _iconOn : _iconOff;
-        _toggle.Header = (on ? L.T("Turn NumPad off") : L.T("Turn NumPad on")) + $" ({_controller.CurrentHotkeyText})";
+        _toggle.Header = (on ? L.T("Turn NumPad off") : L.T("Turn NumPad on")) + $" ({PlatformTheme.HotkeyText(_controller.CurrentHotkeyText)})";
         _layouts.Header = L.T("Layout");
         _open.Header = L.T("Open window");
         _exit.Header = L.T("Exit");

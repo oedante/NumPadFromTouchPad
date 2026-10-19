@@ -22,7 +22,11 @@ public partial class App : Application
     private bool _exiting;
     private bool _selfTest;
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        PlatformTheme.Apply(this); // кисти и размеры текущей ОС для светлой и тёмной темы
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -60,6 +64,9 @@ public partial class App : Application
         _tray.ExitRequested += ExitApplication;
         _notifier = new ModeNotifier(_controller);
         L.Changed += OnLanguageChanged;
+        // Пользователь переключил светлую/тёмную тему системы — окно перестраивается с новыми цветами.
+        ActualThemeVariantChanged += (_, _) => Dispatcher.UIThread.Post(() => RebuildUi(languageChanged: false));
+        MacMenu.Install(this, ShowMainWindow, page => ShowMainWindow(page), () => _ = ShowAboutAsync());
 
         if (_selfTest)
         {
@@ -72,14 +79,17 @@ public partial class App : Application
         if (!minimized) ShowMainWindow();
     }
 
-    public void ShowMainWindow() => ShowMainWindow("home");
+    public void ShowMainWindow() => ShowMainWindow(null);
 
-    private void ShowMainWindow(string page)
+    /// <summary>Показать окно; <paramref name="page"/> — открыть эту страницу (null — оставить текущую).</summary>
+    private void ShowMainWindow(string? page)
     {
         if (_controller is null || _exiting) return;
+        bool created = false;
         if (_window is null)
         {
-            var win = new MainWindow(_controller, page);
+            created = true;
+            var win = new MainWindow(_controller, page ?? "home");
             _window = win;
             win.Closing += (_, e) =>
             {
@@ -100,13 +110,31 @@ public partial class App : Application
         _window.Show();
         if (_window.WindowState == WindowState.Minimized) _window.WindowState = WindowState.Normal;
         _window.Activate();
+        if (!created && page is not null) _ = _window.NavigateAsync(page);
+    }
+
+    /// <summary>«О программе»: версия, лицензия, ссылка на исходный код.</summary>
+    private async Task ShowAboutAsync()
+    {
+        ShowMainWindow(null);
+        string github = "GitHub";
+        var r = await Dialogs.AskAsync(_window, L.F("About {0}", "Ogneliss NumTouch"),
+            $"Ogneliss NumTouch {AboutInfo.Version}\n\n" + L.T("Free and open source software under the MIT license.") + "\n" + AboutInfo.RepositoryUrl,
+            "OK", github);
+        if (r == github) AboutInfo.OpenUrl(AboutInfo.RepositoryUrl);
     }
 
     /// <summary>Смена языка: меню трея обновляется, главное окно пересоздаётся на той же странице.</summary>
-    private void OnLanguageChanged() => Dispatcher.UIThread.Post(() =>
+    private void OnLanguageChanged() => Dispatcher.UIThread.Post(() => RebuildUi(languageChanged: true));
+
+    private void RebuildUi(bool languageChanged)
     {
         if (_controller is null || _exiting) return;
-        _controller.OnLanguageChanged();
+        if (languageChanged)
+        {
+            _controller.OnLanguageChanged();
+            MacMenu.Install(this, ShowMainWindow, page => ShowMainWindow(page), () => _ = ShowAboutAsync());
+        }
         _tray?.Refresh();
         if (_window is not { } old) return;
         string page = old.CurrentPage;
@@ -118,7 +146,7 @@ public partial class App : Application
         if (!visible) return;
         ShowMainWindow(page);
         if (_window is { } w) w.Position = pos;
-    });
+    }
 
     public void ExitApplication()
     {
@@ -207,6 +235,21 @@ public partial class App : Application
                 await Task.Delay(300);
                 if (_notifier.OsdWindow is { } osd) await SaveScreenshotAsync(osd, Path.Combine(shots, $"{code}-osd.png"));
                 _notifier.Hide();
+            }
+            // Тёмная тема: окно перестраивается с тёмными кистями (как при переключении темы в системе).
+            if (shots is not null)
+            {
+                RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
+                await Task.Delay(900);
+                if (_window is null) throw new InvalidOperationException("Main window was not recreated for the dark theme.");
+                foreach (var tag in new[] { "home", "layout", "settings" })
+                {
+                    await _window.NavigateAsync(tag);
+                    if (tag == "layout" && _window.CurrentPageControl is LayoutEditorPage ed) ed.SelectKeyForPreview("n7");
+                    await SaveScreenshotAsync(_window, Path.Combine(shots, $"dark-{L.Code}-{tag}.png"));
+                }
+                RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Default;
+                await Task.Delay(600);
             }
             File.WriteAllText(resultPath, "OK " + controller.DiagnosticsSummary().Replace(Environment.NewLine, " | "));
             controller.Log.Info("Self-test passed.");

@@ -10,11 +10,11 @@
             <TextBlock Classes="subtle" Text="{l:T 'The touchpad turns into a numpad when you press the hotkey.'}" Margin="0,4,0,0" />
         </StackPanel>
 
-        <Border Grid.Row="1" x:Name="ErrorCard" Classes="card" BorderBrush="{StaticResource ErrorBrush}" Background="#FDF3F2" IsVisible="False">
+        <Border Grid.Row="1" x:Name="ErrorCard" Classes="card" BorderBrush="{DynamicResource ErrorBrush}" Background="{DynamicResource ErrorBackgroundBrush}" IsVisible="False">
             <Grid ColumnDefinitions="Auto,*">
-                <PathIcon Width="18" Height="18" Foreground="{StaticResource ErrorBrush}" VerticalAlignment="Top" Margin="0,1,10,0"
+                <PathIcon Width="18" Height="18" Foreground="{DynamicResource ErrorBrush}" VerticalAlignment="Top" Margin="0,1,10,0"
                           Data="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" />
-                <TextBlock Grid.Column="1" x:Name="ErrorText" TextWrapping="Wrap" Foreground="{StaticResource ErrorBrush}" />
+                <TextBlock Grid.Column="1" x:Name="ErrorText" TextWrapping="Wrap" Foreground="{DynamicResource ErrorBrush}" />
             </Grid>
         </Border>
 
@@ -22,14 +22,14 @@
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Border x:Name="ModeBadge" CornerRadius="12" Padding="12,4" Background="{StaticResource BadgeOffBrush}" VerticalAlignment="Center">
+                        <Border x:Name="ModeBadge" CornerRadius="12" Padding="12,4" Background="{DynamicResource BadgeOffBrush}" VerticalAlignment="Center">
                             <TextBlock x:Name="ModeBadgeText" Text="{l:T 'OFF'}" FontWeight="Bold" FontSize="13" />
                         </Border>
                         <TextBlock x:Name="ModeTitle" Text="{l:T 'NumPad mode is off'}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </StackPanel>
                     <TextBlock x:Name="ModeHint" Classes="subtle" Margin="0,8,0,0" />
                 </StackPanel>
-                <Button x:Name="ModeButton" Grid.Column="1" Classes="primary" MinWidth="180" Height="44" Margin="16,0,0,0"
+                <Button x:Name="ModeButton" Grid.Column="1" Classes="accent" MinWidth="180" Height="44" Margin="16,0,0,0"
                         HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                         Content="{l:T 'Turn NumPad on'}" VerticalAlignment="Center" />
             </Grid>
@@ -61,7 +61,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="4" x:Name="WarningsCard" Classes="card" BorderBrush="{StaticResource AccentDarkBrush}" Background="{StaticResource HintBrush}" IsVisible="False">
+        <Border Grid.Row="4" x:Name="WarningsCard" Classes="card" BorderBrush="{DynamicResource HintBorderBrush}" Background="{DynamicResource HintBrush}" IsVisible="False">
             <Grid ColumnDefinitions="*,Auto">
                 <TextBlock x:Name="WarningsText" TextWrapping="Wrap" VerticalAlignment="Center" />
                 <Button Grid.Column="1" x:Name="DismissWarnings" Content="{l:T 'Dismiss'}" Margin="12,0,0,0" VerticalAlignment="Center" />

@@ -453,6 +453,18 @@ public sealed class AppController : IDisposable
         catch (Exception ex) { Log.Error("Could not save settings", ex); }
     }
 
+    /// <summary>Какой шрифт на самом деле используется интерфейсом (для проверки системного шрифта на каждой ОС).</summary>
+    private static string ResolvedFontName()
+    {
+        try
+        {
+            var fm = Avalonia.Media.FontManager.Current;
+            return fm.TryGetGlyphTypeface(new Avalonia.Media.Typeface(fm.DefaultFontFamily), out var gt)
+                ? $"{gt.FamilyName} ({fm.DefaultFontFamily.Name})" : fm.DefaultFontFamily.Name;
+        }
+        catch (Exception ex) { return ex.GetType().Name; }
+    }
+
     public string DiagnosticsSummary()
     {
         var lines = new List<string>
@@ -465,6 +477,8 @@ public sealed class AppController : IDisposable
             L.F("Key output errors: {0}, watchdog recoveries: {1}", OutputErrors, StaleRecoveries),
             L.F("Hotkey: {0} ({1})", CurrentHotkeyText, HotkeyRegistered ? L.T("assigned") : L.T("NOT assigned")),
             L.F("Language: {0}", L.Code),
+            L.F("Font: {0}", ResolvedFontName()),
+            L.F("Version: {0}", AboutInfo.Version),
         };
         lines.AddRange(Platform.Problems.Select(p => L.F("Problem: {0}", p)));
         return string.Join(Environment.NewLine, lines);

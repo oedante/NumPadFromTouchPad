@@ -285,9 +285,11 @@ public partial class CalibrationPage : UserControl, IPage, IDisposable
         PrepareStep.IsVisible = step == Step.Prepare;
         CaptureStep.IsVisible = step == Step.Capture;
         TestStep.IsVisible = step == Step.Test;
-        Step1Badge.Background = step == Step.Prepare ? Res("AccentBrush") : Res("BadgeOffBrush");
-        Step2Badge.Background = step == Step.Capture ? Res("AccentBrush") : Res("BadgeOffBrush");
-        Step3Badge.Background = step == Step.Test ? Res("AccentBrush") : Res("BadgeOffBrush");
+        Step1Badge.Background = step == Step.Prepare ? Res("SystemControlHighlightAccentBrush") : Res("BadgeOffBrush");
+        Step2Badge.Background = step == Step.Capture ? Res("SystemControlHighlightAccentBrush") : Res("BadgeOffBrush");
+        Step3Badge.Background = step == Step.Test ? Res("SystemControlHighlightAccentBrush") : Res("BadgeOffBrush");
+        foreach (var (badge, s) in new[] { (Step1Badge, Step.Prepare), (Step2Badge, Step.Capture), (Step3Badge, Step.Test) })
+            badge.SetValue(Avalonia.Controls.Documents.TextElement.ForegroundProperty, step == s ? Avalonia.Media.Brushes.White : Res("TextBrush"));
         if (step != Step.Capture) { CaptureCanvas.Contacts = Array.Empty<ActiveContactInfo>(); CaptureCanvas.TargetKeyId = null; }
         if (step != Step.Test) { TestCanvas.Contacts = Array.Empty<ActiveContactInfo>(); TestCanvas.ActiveKeyIds.Clear(); }
     }

@@ -11,7 +11,12 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>Ogneliss NumTouch</Product>
-    <Version>3.0.0</Version>
+    <Version>3.0.0-alpha3</Version>
+    <Authors>Ermishin Oleg Andreevich (Ogneliss)</Authors>
+    <Copyright>Copyright © 2026 Ermishin Oleg Andreevich (Ogneliss). MIT License.</Copyright>
+    <Description>Turns a laptop touchpad into a numeric keypad. Free and open source.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/oedante/NumPadFromTouchPad</RepositoryUrl>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
     <!-- Вызовы платформенных сборок защищены проверками OperatingSystem.IsXxx() в PlatformFactory. -->
@@ -26,7 +31,6 @@
     <PackageReference Include="Avalonia" Version="11.2.3" />
     <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
     <!-- Транзитивная зависимость Avalonia (D-Bus на Linux: трей, меню). 0.20.0 уязвима (GHSA-xrw6-gwf8-vvr9),
          исправление перенесено в 0.21.3. -->
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />

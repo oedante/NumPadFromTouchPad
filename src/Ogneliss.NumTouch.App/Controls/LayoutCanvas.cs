@@ -27,29 +27,13 @@ public sealed class LayoutCanvas : Control
     private const double SnapPx = 8;       // радиус привязки, px
     private const double DragStartPx = 3;  // до этого сдвига щелчок не считается перетаскиванием
 
-    private static readonly IBrush StickerBrush = new ImmutableSolidColorBrush(Color.FromRgb(0xE4, 0xE4, 0xE0));
-    private static readonly IBrush KeyBrush = new ImmutableSolidColorBrush(Colors.White);
-    private static readonly IBrush KeyDisabledBrush = new ImmutableSolidColorBrush(Color.FromRgb(0xEE, 0xEE, 0xEA));
     private static readonly IBrush KeyActiveBrush = new ImmutableSolidColorBrush(Color.FromRgb(0xFF, 0xD9, 0x64));
     private static readonly IBrush KeyTargetBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x80, 0xFF, 0xD9, 0x64));
-    private static readonly IBrush TextBrush = new ImmutableSolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x2A));
-    private static readonly IBrush SubtleBrush = new ImmutableSolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x86));
-    private static readonly IBrush ContactBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xB0, 0x32, 0x32, 0x32));
     private static readonly IBrush ContactIgnoredBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x70, 0xC0, 0x39, 0x2B));
-    private static readonly IBrush RulerBrush = new ImmutableSolidColorBrush(Color.FromRgb(0xF7, 0xF7, 0xF5));
-    private static readonly IBrush RulerTextBrush = new ImmutableSolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x86));
     private static readonly IBrush RulerBandBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x90, 0xFF, 0xD9, 0x64));
     private static readonly IBrush ReadoutBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xE8, 0x26, 0x26, 0x26));
     private static readonly ImmutableSolidColorBrush GuideBrush = new ImmutableSolidColorBrush(Color.FromRgb(0xE0, 0x3E, 0x6E));
-    private static readonly IPen KeyPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0xC8, 0xC8, 0xC2)), 1);
-    private static readonly IPen DisabledPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0xB0, 0xB0, 0xAA)), 1, new ImmutableDashStyle(new double[] { 3, 2 }, 0));
-    private static readonly IPen SelectedPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0x32, 0x32, 0x32)), 2);
-    private static readonly IPen HandlePen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0x32, 0x32, 0x32)), 1.2);
     private static readonly IPen HoverPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0x94)), 1.5);
-    private static readonly IPen StickerPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0xC8, 0xC8, 0xC2)), 1);
-    private static readonly IPen GridMinorPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x1C, 0, 0, 0)), 1);
-    private static readonly IPen GridMajorPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x38, 0, 0, 0)), 1);
-    private static readonly IPen RulerPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0xB4, 0xB4, 0xAE)), 1);
     private static readonly IPen GuidePen = new ImmutablePen(GuideBrush, 1);
     private static readonly IPen SameSizePen = new ImmutablePen(GuideBrush, 1.5, new ImmutableDashStyle(new double[] { 3, 2 }, 0));
     private static readonly IPen TargetPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0xC0, 0x39, 0x2B)), 2);
@@ -59,7 +43,41 @@ public sealed class LayoutCanvas : Control
     {
         Focusable = true;
         ClipToBounds = true;
+        ActualThemeVariantChanged += (_, _) => { _palette = null; InvalidateVisual(); };
     }
+
+    /// <summary>Цвета холста для текущей темы (светлая/тёмная) — из ресурсов PlatformTheme.</summary>
+    private sealed class Palette
+    {
+        public required IImmutableBrush Sticker, Key, KeyDisabled, Text, Subtle, Ruler, Contact;
+        public required IPen StickerPen, KeyPen, DisabledPen, SelectedPen, HandlePen, GridMinorPen, GridMajorPen, RulerPen;
+
+        private static IImmutableBrush B(string key) =>
+            Views.Ui.Brush(key) is ISolidColorBrush sc ? new ImmutableSolidColorBrush(sc.Color, sc.Opacity) : new ImmutableSolidColorBrush(Colors.Gray);
+
+        public static Palette Current()
+        {
+            var keyBorder = B("Canvas.KeyBorder");
+            var selected = B("Canvas.Selected");
+            return new Palette
+            {
+                Sticker = B("Canvas.Sticker"), Key = B("Canvas.Key"), KeyDisabled = B("Canvas.KeyDisabled"),
+                Text = B("Canvas.Text"), Subtle = B("Canvas.TextSubtle"), Ruler = B("Canvas.Ruler"), Contact = B("Canvas.Contact"),
+                StickerPen = new ImmutablePen(B("Canvas.StickerBorder"), 1),
+                KeyPen = new ImmutablePen(keyBorder, 1),
+                DisabledPen = new ImmutablePen(keyBorder, 1, new ImmutableDashStyle(new double[] { 3, 2 }, 0)),
+                SelectedPen = new ImmutablePen(selected, 2),
+                HandlePen = new ImmutablePen(selected, 1.2),
+                GridMinorPen = new ImmutablePen(B("Canvas.GridMinor"), 1),
+                GridMajorPen = new ImmutablePen(B("Canvas.GridMajor"), 1),
+                RulerPen = new ImmutablePen(B("Canvas.RulerLine"), 1),
+            };
+        }
+    }
+
+    private Palette? _palette;
+    private Palette P => _palette ??= Palette.Current();
+
 
     // ------------------------------------------------------------------ свойства
 
@@ -143,7 +161,7 @@ public sealed class LayoutCanvas : Control
         dc.DrawRectangle(Brushes.Transparent, null, new Rect(Bounds.Size)); // попадание мыши по всей площади
         var sticker = StickerRect();
         if (sticker.Width <= 0) return;
-        dc.DrawRectangle(StickerBrush, StickerPen, sticker, 10, 10);
+        dc.DrawRectangle(P.Sticker, P.StickerPen, sticker, 10, 10);
         if (_layout is null) return;
 
         if (_snap && IsEditable && GridStep > 0) DrawGrid(dc, sticker);
@@ -161,15 +179,15 @@ public sealed class LayoutCanvas : Control
             if (isSelected) selected = k;
             bool active = ActiveKeyIds.Contains(k.Id);
             bool target = k.Id == _targetKeyId;
-            IBrush fill = !k.Enabled ? KeyDisabledBrush : active ? KeyActiveBrush : target ? KeyTargetBrush : KeyBrush;
-            IPen pen = isSelected ? SelectedPen
+            IBrush fill = !k.Enabled ? P.KeyDisabled : active ? KeyActiveBrush : target ? KeyTargetBrush : P.Key;
+            IPen pen = isSelected ? P.SelectedPen
                 : target ? TargetPen
                 : IsEditable && k.Id == _hoverKeyId && _drag == DragMode.None ? HoverPen
-                : k.Enabled ? KeyPen : DisabledPen;
+                : k.Enabled ? P.KeyPen : P.DisabledPen;
             double radius = Math.Min(6, Math.Min(r.Width, r.Height) / 5);
             dc.DrawRectangle(fill, pen, r, radius, radius);
             if (_sameSize.Contains(k.Id)) dc.DrawRectangle(null, SameSizePen, r.Deflate(2), radius, radius);
-            DrawLabel(dc, string.IsNullOrEmpty(k.Label) ? "?" : k.Label, r, unit, k.Enabled ? TextBrush : SubtleBrush);
+            DrawLabel(dc, string.IsNullOrEmpty(k.Label) ? "?" : k.Label, r, unit, k.Enabled ? P.Text : P.Subtle);
         }
 
         if (selected is not null) DrawHandles(dc, ToScreen(sticker, selected.Bounds));
@@ -189,7 +207,7 @@ public sealed class LayoutCanvas : Control
         }
 
         foreach (var c in _contacts)
-            dc.DrawEllipse(c.Ignored ? ContactIgnoredBrush : ContactBrush, null, ToScreen(sticker, c.AreaPosition), 9, 9);
+            dc.DrawEllipse(c.Ignored ? ContactIgnoredBrush : P.Contact, null, ToScreen(sticker, c.AreaPosition), 9, 9);
     }
 
     private void DrawGrid(DrawingContext dc, Rect s)
@@ -198,14 +216,14 @@ public sealed class LayoutCanvas : Control
         int major = Math.Max(1, (int)Math.Round(0.1 / GridStep)); // линия каждые 10 %
         for (int i = 1; i < n; i++)
         {
-            var pen = i % major == 0 ? GridMajorPen : GridMinorPen;
+            var pen = i % major == 0 ? P.GridMajorPen : P.GridMinorPen;
             double x = Math.Round(s.X + s.Width * i / n) + 0.5, y = Math.Round(s.Y + s.Height * i / n) + 0.5;
             dc.DrawLine(pen, new Point(x, s.Top + 1), new Point(x, s.Bottom - 1));
             dc.DrawLine(pen, new Point(s.Left + 1, y), new Point(s.Right - 1, y));
         }
     }
 
-    private static void DrawHandles(DrawingContext dc, Rect r)
+    private void DrawHandles(DrawingContext dc, Rect r)
     {
         foreach (var p in new[]
                  {
@@ -213,7 +231,7 @@ public sealed class LayoutCanvas : Control
                      new Point(r.Center.X, r.Top), new Point(r.Center.X, r.Bottom),
                      new Point(r.Left, r.Center.Y), new Point(r.Right, r.Center.Y),
                  })
-            dc.DrawRectangle(Brushes.White, HandlePen, new Rect(p.X - HandleSize / 2, p.Y - HandleSize / 2, HandleSize, HandleSize), 1.5, 1.5);
+            dc.DrawRectangle(P.Key, P.HandlePen, new Rect(p.X - HandleSize / 2, p.Y - HandleSize / 2, HandleSize, HandleSize), 1.5, 1.5);
     }
 
     private static void DrawGuide(DrawingContext dc, Rect s, SnapGuide g)
@@ -254,8 +272,8 @@ public sealed class LayoutCanvas : Control
     {
         var top = new Rect(s.X, s.Y - RulerTop - 4, s.Width, RulerTop);
         var left = new Rect(s.X - RulerLeft - 4, s.Y, RulerLeft, s.Height);
-        dc.DrawRectangle(RulerBrush, RulerPen, top, 3, 3);
-        dc.DrawRectangle(RulerBrush, RulerPen, left, 3, 3);
+        dc.DrawRectangle(P.Ruler, P.RulerPen, top, 3, 3);
+        dc.DrawRectangle(P.Ruler, P.RulerPen, left, 3, 3);
         if (selected is not null)
         {
             dc.DrawRectangle(RulerBandBrush, null, new Rect(s.X + selected.X * s.Width, top.Y + 1, selected.Width * s.Width, top.Height - 2));
@@ -267,17 +285,17 @@ public sealed class LayoutCanvas : Control
         {
             double x = Math.Round(s.X + s.Width * p / 100) + 0.5;
             double len = p % 10 == 0 ? 7 : 4;
-            dc.DrawLine(RulerPen, new Point(x, top.Bottom - len), new Point(x, top.Bottom));
+            dc.DrawLine(P.RulerPen, new Point(x, top.Bottom - len), new Point(x, top.Bottom));
             if (p % labelEveryX == 0 && p is > 0 and < 100)
             {
-                var ft = Text(p.ToString(CultureInfo.InvariantCulture), 9.5, RulerTextBrush);
+                var ft = Text(p.ToString(CultureInfo.InvariantCulture), 9.5, P.Subtle);
                 dc.DrawText(ft, new Point(x - ft.Width / 2, top.Y + 1));
             }
             double y = Math.Round(s.Y + s.Height * p / 100) + 0.5;
-            dc.DrawLine(RulerPen, new Point(left.Right - len, y), new Point(left.Right, y));
+            dc.DrawLine(P.RulerPen, new Point(left.Right - len, y), new Point(left.Right, y));
             if (p % labelEveryY == 0 && p is > 0 and < 100)
             {
-                var ft = Text(p.ToString(CultureInfo.InvariantCulture), 9.5, RulerTextBrush);
+                var ft = Text(p.ToString(CultureInfo.InvariantCulture), 9.5, P.Subtle);
                 dc.DrawText(ft, new Point(left.Right - 9 - ft.Width, y - ft.Height / 2));
             }
         }

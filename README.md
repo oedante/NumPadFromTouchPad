@@ -42,6 +42,7 @@ Download the file for your system from [Releases](../../releases).
 - Real numpad keys (`Num 7`, `Num Enter`…), not the digits of the main row.
 - In NumPad mode the cursor does not jump while a finger is on the keys (on Linux the touchpad is grabbed entirely, while the NUM10 trackpad zone keeps moving the cursor).
 - On-screen notification when the mode changes (can be turned off in Settings).
+- Looks native on every OS: system font, light and dark theme and accent colour from the system settings; on macOS — the app menu in the menu bar, ⌘ shortcuts and macOS button order.
 - English and Russian interface; the language follows the system or is chosen in Settings.
 - The mode turns off on lock and sleep (Windows); no key is ever left “stuck”.
 
@@ -54,6 +55,10 @@ Download the file for your system from [Releases](../../releases).
 ## Privacy
 
 Works offline. The log contains technical events only; pressed keys, typed text and touch coordinates are never recorded.
+
+## License
+
+Free and open source under the [MIT license](LICENSE). Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Website: [ogneliss.ru/numtouch](https://ogneliss.ru/numtouch/).
 
 ## For developers
 

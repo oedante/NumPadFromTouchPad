@@ -13,6 +13,8 @@ namespace Ogneliss.NumTouch.App.Views;
 public partial class SettingsPage : UserControl, IPage
 {
     private readonly AppController _app;
+    private readonly Avalonia.Threading.DispatcherTimer _applyTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
+    private bool _loading = true; // до первой загрузки значения элементов не применяются
 
     public SettingsPage() : this(null!) { }
 
@@ -21,11 +23,19 @@ public partial class SettingsPage : UserControl, IPage
         _app = app;
         InitializeComponent();
         if (app is null) return;
-        SaveButton.Click += (_, _) => Save();
+        // Изменения применяются сразу; ползунки — с короткой задержкой, чтобы не сохранять на каждом шаге.
+        _applyTimer.Tick += (_, _) => { _applyTimer.Stop(); Save(); };
+        foreach (var box in new ComboBox[] { TriggerBox, SlideBox, SuppressBox, LanguageBox })
+            box.SelectionChanged += (_, _) => Changed(immediate: true);
+        foreach (var cb in new CheckBox[] { RepeatBox, NumLockBox, PalmBox, GesturesBox, AutostartBox, MinimizedBox, CloseToTrayBox, RestoreModeBox, LogBox, NotificationsBox })
+            cb.Click += (_, _) => Changed(immediate: true);
         ApplyHotkeyButton.Click += async (_, _) => await ApplyHotkey();
         DefaultHotkeyButton.Click += async (_, _) => { HotkeyBox.Text = Hotkey.Default.ToString(); await ApplyHotkey(); };
         HotkeyBox.AddHandler(KeyDownEvent, OnHotkeyKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         OpenFolderButton.Click += (_, _) => OpenFolder(_app.Store.RootDir);
+        AboutVersion.Text = "Ogneliss NumTouch " + AboutInfo.Version;
+        GitHubButton.Click += (_, _) => AboutInfo.OpenUrl(AboutInfo.RepositoryUrl);
+        IssueButton.Click += (_, _) => AboutInfo.OpenUrl(AboutInfo.IssuesUrl);
         ResetButton.Click += async (_, _) =>
         {
             if (!await Dialogs.ConfirmAsync(this, L.T("Settings"), L.T("Reset all settings to their defaults? Layouts and calibrations will be kept."))) return;
@@ -39,14 +49,33 @@ public partial class SettingsPage : UserControl, IPage
             new Choice<UiLanguage>(UiLanguage.Russian, "Русский"), // loc-ok: название языка на нём самом
         };
         foreach (var s in new[] { DelaySlider, IntervalSlider, TailSlider })
-            s.PropertyChanged += (_, e) => { if (e.Property == RangeBase.ValueProperty) UpdateSliderTexts(); };
+            s.PropertyChanged += (_, e) => { if (e.Property == RangeBase.ValueProperty) { UpdateSliderTexts(); Changed(immediate: false); } };
     }
 
     public void OnShown() => Load();
     public Task<bool> CanLeaveAsync() => Task.FromResult(true);
-    public void OnHidden() { }
+    public void OnHidden()
+    {
+        if (!_applyTimer.IsEnabled) return; // недоприменённое движение ползунка
+        _applyTimer.Stop();
+        Save();
+    }
+
+    private void Changed(bool immediate)
+    {
+        if (_loading) return;
+        _applyTimer.Stop();
+        if (immediate) Save(); else _applyTimer.Start();
+    }
 
     private void Load()
+    {
+        _loading = true;
+        try { LoadCore(); }
+        finally { _loading = false; }
+    }
+
+    private void LoadCore()
     {
         var s = _app.Settings;
         HotkeyBox.Text = _app.CurrentHotkeyText;
@@ -84,7 +113,6 @@ public partial class SettingsPage : UserControl, IPage
         LanguageBox.SelectedItem = LanguageBox.Items.OfType<Choice<UiLanguage>>().FirstOrDefault(c => c.Value == s.Language);
         NotificationsBox.IsChecked = s.ShowNotifications;
         UpdateSliderTexts();
-        SavedMark.IsVisible = false;
     }
 
     private static void Select(ComboBox box, string tag) =>
@@ -115,7 +143,6 @@ public partial class SettingsPage : UserControl, IPage
         if (LanguageBox.SelectedItem is Choice<UiLanguage> lang) s.Language = lang.Value;
         _app.ApplySettings();
         Load();
-        SavedMark.IsVisible = true;
     }
 
     // ---------------------------------------------------------------- горячая клавиша
@@ -214,13 +241,13 @@ public partial class SettingsPage : UserControl, IPage
     {
         if (_app.HotkeyError is not null)
         {
-            HotkeyStatus.Text = "✕ " + _app.HotkeyError + (_app.HotkeyRegistered ? " " + L.F("Currently active: {0}.", _app.CurrentHotkeyText) : "");
+            HotkeyStatus.Text = "✕ " + _app.HotkeyError + (_app.HotkeyRegistered ? " " + L.F("Currently active: {0}.", PlatformTheme.HotkeyText(_app.CurrentHotkeyText)) : "");
             HotkeyStatus.Foreground = Ui.Brush("ErrorBrush");
         }
         else
         {
             HotkeyStatus.Text = _app.HotkeyRegistered
-                ? "✓ " + L.F("{0} works in any program.", _app.CurrentHotkeyText) + (_app.Platform.Hotkey.Limitation is { } l ? " " + l : "")
+                ? "✓ " + L.F("{0} works in any program.", PlatformTheme.HotkeyText(_app.CurrentHotkeyText)) + (_app.Platform.Hotkey.Limitation is { } l ? " " + l : "")
                 : L.T("No hotkey assigned.");
             HotkeyStatus.Foreground = Ui.Brush("OnBrush");
         }

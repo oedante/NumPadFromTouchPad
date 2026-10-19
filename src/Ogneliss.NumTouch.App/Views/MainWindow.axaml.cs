@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Ogneliss.NumTouch.App.Services;
@@ -33,7 +34,10 @@ public partial class MainWindow : Window
     public MainWindow(AppController app, string startPage = "home")
     {
         _app = app;
+        Classes.Add(PlatformTheme.OsClass); // стили конкретной ОС (боковая панель, радиусы)
         InitializeComponent();
+        ExitButton.IsVisible = PlatformTheme.Os != OsFamily.MacOS;
+        AddHandler(KeyDownEvent, OnShortcut, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         foreach (var b in Nav.Children.OfType<Button>())
             b.Click += async (_, _) => await NavigateAsync((string)b.Tag!);
         ExitButton.Click += (_, _) => (Avalonia.Application.Current as App)?.ExitApplication();
@@ -83,12 +87,21 @@ public partial class MainWindow : Window
         (page as IPage)?.OnShown();
     }
 
+    /// <summary>Привычные сочетания окна: ⌘W — закрыть окно, ⌘, — настройки (macOS); Ctrl+, — настройки (Windows, Linux).</summary>
+    private async void OnShortcut(object? sender, KeyEventArgs e)
+    {
+        bool cmd = PlatformTheme.Os == OsFamily.MacOS ? e.KeyModifiers == KeyModifiers.Meta : e.KeyModifiers == KeyModifiers.Control;
+        if (!cmd) return;
+        if (e.Key == Key.OemComma) { e.Handled = true; await NavigateAsync("settings"); }
+        else if (e.Key == Key.W && PlatformTheme.Os == OsFamily.MacOS) { e.Handled = true; Close(); }
+    }
+
     private void UpdateStatus()
     {
         bool on = _app.Mode.IsNumPad;
-        StatusDot.Fill = on ? Ui.Brush("OnBrush") : _app.InputError is not null ? Ui.Brush("ErrorBrush") : new SolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x8A));
+        StatusDot.Fill = on ? Ui.Brush("OnBrush") : _app.InputError is not null ? Ui.Brush("ErrorBrush") : Ui.Brush("StatusDotOffBrush");
         StatusText.Text = on ? L.T("NumPad on") : _app.InputError is not null ? L.T("Touchpad unavailable") : L.T("NumPad off");
-        HotkeyHint.Text = _app.HotkeyRegistered ? _app.CurrentHotkeyText : L.T("No hotkey assigned");
-        ToolTip.SetTip(HotkeyChip, _app.HotkeyRegistered ? L.F("{0} — toggle", _app.CurrentHotkeyText) : null);
+        HotkeyHint.Text = _app.HotkeyRegistered ? PlatformTheme.HotkeyText(_app.CurrentHotkeyText) : L.T("No hotkey assigned");
+        ToolTip.SetTip(HotkeyChip, _app.HotkeyRegistered ? L.F("{0} — toggle", PlatformTheme.HotkeyText(_app.CurrentHotkeyText)) : null);
     }
 }

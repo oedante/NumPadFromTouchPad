@@ -5,7 +5,9 @@
   src/Ogneliss.NumTouch.App/Assets/app.ico         — значок программы (16…256; мелкие размеры — упрощённый рисунок)
   src/Ogneliss.NumTouch.App/Assets/logo.png        — логотип в боковой панели окна
   src/Ogneliss.NumTouch.App/Assets/tray_on|off.ico — значок в трее Windows (16…48)
-  src/Ogneliss.NumTouch.App/Assets/tray_on|off.png — значок в трее Linux/macOS
+  src/Ogneliss.NumTouch.App/Assets/tray_on|off.png — значок в трее Linux
+  src/Ogneliss.NumTouch.App/Assets/tray_mac_on|off.png — значок в строке меню macOS (шаблон: чёрный силуэт,
+                                                      система сама красит его под светлую/тёмную строку меню)
   packaging/windows/Assets/*.png                   — значки пакета MSIX
   packaging/linux/ogneliss-numtouch.png            — значок ярлыка Linux
   packaging/macos/AppIcon.icns                     — значок .app (плашка 824/1024 по сетке macOS)
@@ -115,6 +117,31 @@ write_ico(assets / "tray_off.ico", [icon(s, False, 99) for s in (16, 20, 24, 32,
 icon(64, True, 99).save(assets / "tray_on.png")
 icon(64, False, 99).save(assets / "tray_off.png")
 MASTER.resize((128, 128), Image.LANCZOS).save(assets / "logo.png")
+
+
+def mac_template(on=True, S=352):
+    """Силуэт для строки меню macOS: цифровой блок 3×3 и пламя; выключено — полупрозрачный (как неактивный)."""
+    u = S / 16
+    im = Image.new("L", (S, S), 0); d = ImageDraw.Draw(im)
+    d.rounded_rectangle([1.2 * u, 4.6 * u, 11.0 * u, 14.6 * u], int(1.6 * u), fill=255)
+    for r in range(3):
+        for c in range(3):
+            x = 2.3 * u + c * 3.0 * u; y = 5.7 * u + r * 3.0 * u
+            d.rounded_rectangle([x, y, x + 2.0 * u, y + 2.0 * u], int(0.5 * u), fill=0)
+    cx, cy, rr = 12.4 * u, 5.4 * u, 2.6 * u
+    d.ellipse([cx - rr - 1.0 * u, cy - rr - 1.0 * u, cx + rr + 1.0 * u, cy + rr + 1.0 * u], fill=0)  # отбивка
+    d.polygon([(cx - rr * 1.25, cy - 0.2 * u), (cx + 0.4 * u, -0.2 * u), (cx + rr * 1.25, cy - 0.2 * u)], fill=0)
+    d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=255)
+    d.polygon([(cx - rr * 0.92, cy - 0.5 * u), (cx + 0.4 * u, 0.6 * u), (cx + rr * 0.92, cy - 0.5 * u)], fill=255)
+    alpha = im.resize((44, 44), Image.LANCZOS)
+    if not on:
+        alpha = alpha.point(lambda v: int(v * 0.45))
+    out = Image.new("RGBA", (44, 44), (0, 0, 0, 0)); out.putalpha(alpha)
+    return out
+
+
+mac_template(True).save(assets / "tray_mac_on.png")
+mac_template(False).save(assets / "tray_mac_off.png")
 
 msix = ROOT / "packaging/windows/Assets"
 icon(44, True, 99).save(msix / "Square44x44Logo.png")

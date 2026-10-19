@@ -6,7 +6,11 @@ using Avalonia.VisualTree;
 
 namespace Ogneliss.NumTouch.App.Views;
 
-/// <summary>Простые модальные диалоги (в Avalonia нет MessageBox). Возвращают текст нажатой кнопки или null.</summary>
+/// <summary>
+/// Простые модальные диалоги (в Avalonia нет MessageBox). Возвращают текст нажатой кнопки или null.
+/// Первая кнопка — основная (Enter, акцентный цвет), «Отмена»/«Нет» — по Esc. Порядок на экране как в системе:
+/// в Windows основная кнопка слева, в macOS и GNOME — справа.
+/// </summary>
 public static class Dialogs
 {
     public static async Task<string?> AskAsync(Visual? owner, string title, string message, params string[] buttons)
@@ -22,15 +26,22 @@ public static class Dialogs
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ShowInTaskbar = false,
         };
+        window.Classes.Add(Services.PlatformTheme.OsClass);
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
+        var created = new List<Button>();
         for (int i = 0; i < buttons.Length; i++)
         {
             string text = buttons[i];
             var b = new Button { Content = text, MinWidth = 90, HorizontalContentAlignment = HorizontalAlignment.Center };
-            if (i == 0) b.Classes.Add("primary");
+            if (i == 0) { b.Classes.Add("accent"); b.IsDefault = true; }
+            // Esc — «Отмена»/«Нет», а если таких нет — основная кнопка (например, «OK» в окне «О программе»).
+            bool isCancel = text == L.T("Cancel") || text == L.T("No");
+            if (isCancel || (i == 0 && !buttons.Any(x => x == L.T("Cancel") || x == L.T("No")))) b.IsCancel = true;
             b.Click += (_, _) => { result = text; window.Close(); };
-            panel.Children.Add(b);
+            created.Add(b);
         }
+        if (Services.PlatformTheme.AffirmativeLast) created.Reverse();
+        foreach (var b in created) panel.Children.Add(b);
         window.Content = new StackPanel
         {
             Margin = new Thickness(20),
