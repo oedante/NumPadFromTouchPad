@@ -244,5 +244,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           (cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          # Описание релиза — только раздел последней версии из CHANGELOG.md.
+          awk '/^## /{n++} n==1' CHANGELOG.md > release-notes.md
           gh release create "${{ github.event.inputs.release_tag }}" dist/* --target "$GITHUB_SHA" --prerelease \
-            --title "Ogneliss NumTouch ${{ github.event.inputs.release_tag }}" --notes-file CHANGELOG.md
+            --title "Ogneliss NumTouch ${{ github.event.inputs.release_tag }}" --notes-file release-notes.md
