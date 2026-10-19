@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Ogneliss.NumTouch.Core.Config;
@@ -22,7 +23,8 @@ internal sealed unsafe class MacKeyboard : IKeyboardOutput
 
     private bool Post(KeyDefinition key, bool down)
     {
-        if (!PlatformKeyCodes.TryGetMac(key, out var code)) return false;
+        if (!PlatformKeyCodes.TryGetMac(key, out var code))
+            return PlatformKeyCodes.MacSubstitutes.TryGetValue(key.Name, out var sub) && PostSubstitute(sub, down);
         lock (_sync)
         {
             ulong flag = key.Name switch
@@ -34,15 +36,60 @@ internal sealed unsafe class MacKeyboard : IKeyboardOutput
                 _ => 0,
             };
             if (flag != 0) _modifiers = down ? _modifiers | flag : _modifiers & ~flag;
-            nint ev = CGEventCreateKeyboardEvent(0, code, down);
-            if (ev == 0) return false;
-            ulong flags = _modifiers | (key.Group == KeyGroup.Numpad ? FlagNumericPad : 0);
-            CGEventSetFlags(ev, flags);
-            CGEventSetIntegerValueField(ev, kCGEventSourceUserData, Signature);
-            CGEventPost(kCGHIDEventTap, ev);
-            CFRelease(ev);
-            return true;
+            return PostRaw(code, down, _modifiers | (key.Group == KeyGroup.Numpad ? FlagNumericPad : 0));
         }
+    }
+
+    /// <summary>
+    /// Системный аналог клавиши, которой нет на Mac: сочетание нажимается целиком, как на клавиатуре
+    /// (⌘ и ⇧ вниз, клавиша, затем в обратном порядке), приложение запускается при нажатии.
+    /// </summary>
+    private bool PostSubstitute(MacSubstitute sub, bool down)
+    {
+        if (sub.BundleId is { } bundle)
+        {
+            if (!down) return true;
+            try
+            {
+                var psi = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
+                psi.ArgumentList.Add("-b");
+                psi.ArgumentList.Add(bundle);
+                using var p = Process.Start(psi);
+                return p is not null;
+            }
+            catch (Exception) { return false; }
+        }
+        lock (_sync)
+        {
+            ulong cmd = sub.Command ? FlagCommand : 0, all = cmd | (sub.Shift ? FlagShift : 0);
+            bool ok = true;
+            if (down)
+            {
+                if (sub.Command) ok &= PostRaw(KeyCommand, true, _modifiers | cmd);
+                if (sub.Shift) ok &= PostRaw(KeyShift, true, _modifiers | all);
+                ok &= PostRaw(sub.Code, true, _modifiers | all);
+            }
+            else
+            {
+                ok &= PostRaw(sub.Code, false, _modifiers | all);
+                if (sub.Shift) ok &= PostRaw(KeyShift, false, _modifiers | cmd);
+                if (sub.Command) ok &= PostRaw(KeyCommand, false, _modifiers);
+            }
+            return ok;
+        }
+    }
+
+    private const ushort KeyCommand = 0x37, KeyShift = 0x38; // kVK_Command, kVK_Shift
+
+    private static bool PostRaw(ushort code, bool down, ulong flags)
+    {
+        nint ev = CGEventCreateKeyboardEvent(0, code, down);
+        if (ev == 0) return false;
+        CGEventSetFlags(ev, flags);
+        CGEventSetIntegerValueField(ev, kCGEventSourceUserData, Signature);
+        CGEventPost(kCGHIDEventTap, ev);
+        CFRelease(ev);
+        return true;
     }
 
     public bool TypeText(string text)

@@ -29,5 +29,7 @@ internal static class Program
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .With(PlatformTheme.FontOptions()) // системный шрифт: Segoe UI / San Francisco / шрифт Linux
+            // macOS: стандартные пункты меню программы Avalonia английские — свои, на языке интерфейса, в MacMenu.
+            .With(new MacOSPlatformOptions { DisableDefaultApplicationMenuItems = true })
             .LogToTrace();
 }

@@ -65,7 +65,7 @@ public sealed class Tray : IDisposable
         _toggle.Header = (on ? L.T("Turn NumPad off") : L.T("Turn NumPad on")) + $" ({PlatformTheme.HotkeyText(_controller.CurrentHotkeyText)})";
         _layouts.Header = L.T("Layout");
         _open.Header = L.T("Open window");
-        _exit.Header = L.T("Exit");
+        _exit.Header = PlatformTheme.Os == OsFamily.MacOS ? L.F("Quit {0}", "Ogneliss NumTouch") : L.T("Exit");
         string text = _controller.InputError is not null ? L.T("NumPad: touchpad unavailable")
             : on ? L.T("NumPad: on") : L.T("NumPad: off");
         _icon.ToolTipText = $"{text} — {_controller.ActiveLayout.Name}";
@@ -85,11 +85,10 @@ public sealed class Tray : IDisposable
         }
     }
 
-    
     public void Dispose()
     {
         _controller.StateChanged -= Refresh;
-                _icon.IsVisible = false;
+        _icon.IsVisible = false;
         TrayIcon.SetIcons(_app, new TrayIcons());
         _icon.Dispose();
     }

@@ -11,7 +11,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>Ogneliss NumTouch</Product>
-    <Version>3.0.0-beta1</Version>
+    <Version>3.0.0-beta2</Version>
     <Authors>Ermishin Oleg Andreevich (Ogneliss)</Authors>
     <Copyright>Copyright © 2026 Ermishin Oleg Andreevich (Ogneliss). MIT License.</Copyright>
     <Description>Turns a laptop touchpad into a numeric keypad. Free and open source.</Description>

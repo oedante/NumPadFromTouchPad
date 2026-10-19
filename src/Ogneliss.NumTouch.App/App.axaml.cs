@@ -44,6 +44,9 @@ public partial class App : Application
         };
         TaskScheduler.UnobservedTaskException += (_, e) => { _controller?.Log.Error("Unobserved task exception", e.Exception); e.SetObserved(); };
         desktop.Exit += (_, _) => Cleanup();
+        // Завершение по запросу системы: ⌘Q и «Завершить» в macOS (меню программы и Dock), выход из сеанса в Windows.
+        // Отмечаем выход заранее, чтобы закрытие окна не спрятало его в трей и не отменило завершение.
+        desktop.ShutdownRequested += (_, e) => { if (!e.Cancel) _exiting = true; };
 
         try
         {
@@ -66,7 +69,13 @@ public partial class App : Application
         L.Changed += OnLanguageChanged;
         // Пользователь переключил светлую/тёмную тему системы — окно перестраивается с новыми цветами.
         ActualThemeVariantChanged += (_, _) => Dispatcher.UIThread.Post(() => RebuildUi(languageChanged: false));
-        MacMenu.Install(this, ShowMainWindow, page => ShowMainWindow(page), () => _ = ShowAboutAsync());
+        InstallMacMenu();
+        // macOS: щелчок по значку в Dock открывает окно, даже если оно спрятано в строку меню или программа скрыта (⌘H).
+        if (TryGetFeature(typeof(IActivatableLifetime)) is IActivatableLifetime activatable)
+            activatable.Activated += (_, e) =>
+            {
+                if (e.Kind == ActivationKind.Reopen) Dispatcher.UIThread.Post(ShowMainWindow);
+            };
 
         if (_selfTest)
         {
@@ -81,6 +90,9 @@ public partial class App : Application
 
     public void ShowMainWindow() => ShowMainWindow(null);
 
+    private void InstallMacMenu() =>
+        MacMenu.Install(this, ShowMainWindow, page => ShowMainWindow(page), () => _ = ShowAboutAsync(), ExitApplication);
+
     /// <summary>Показать окно; <paramref name="page"/> — открыть эту страницу (null — оставить текущую).</summary>
     private void ShowMainWindow(string? page)
     {
@@ -94,6 +106,11 @@ public partial class App : Application
             win.Closing += (_, e) =>
             {
                 if (_exiting || ReferenceEquals(win, _retiring)) return;
+                if (e.CloseReason is WindowCloseReason.ApplicationShutdown or WindowCloseReason.OSShutdown)
+                {
+                    _exiting = true; // завершение программы: окно закрывается, а не прячется
+                    return;
+                }
                 if (_controller.Settings.CloseToTray)
                 {
                     e.Cancel = true; // закрытие окна прячет его в трей; выход — через меню трея или «Выход»
@@ -133,7 +150,7 @@ public partial class App : Application
         if (languageChanged)
         {
             _controller.OnLanguageChanged();
-            MacMenu.Install(this, ShowMainWindow, page => ShowMainWindow(page), () => _ = ShowAboutAsync());
+            InstallMacMenu();
         }
         _tray?.Refresh();
         if (_window is not { } old) return;
@@ -251,9 +268,24 @@ public partial class App : Application
                 RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Default;
                 await Task.Delay(600);
             }
-            File.WriteAllText(resultPath, "OK " + controller.DiagnosticsSummary().Replace(Environment.NewLine, " | "));
-            controller.Log.Info("Self-test passed.");
-            ExitApplication();
+            // macOS: меню программы со своими пунктами «Завершить ⌘Q» и т. п.; щелчок по значку в Dock обрабатывается.
+            if (PlatformTheme.Os == OsFamily.MacOS)
+            {
+                if (NativeMenu.GetMenu(this)?.Items.OfType<NativeMenuItem>().Any(i => i.Gesture?.Key == Avalonia.Input.Key.Q) != true)
+                    throw new InvalidOperationException("The macOS application menu has no Quit item.");
+                if (TryGetFeature(typeof(IActivatableLifetime)) is null)
+                    throw new InvalidOperationException("IActivatableLifetime is not available: the Dock icon would not reopen the window.");
+            }
+
+            // Завершение по запросу системы (⌘Q, «Завершить» в Dock, выход из сеанса), когда окно спрятано в трей:
+            // закрытие окна в трей не должно отменять завершение.
+            string summary = "OK " + controller.DiagnosticsSummary().Replace(Environment.NewLine, " | ");
+            controller.Settings.CloseToTray = true; // только в памяти, без сохранения
+            _window?.Hide();
+            controller.Log.Info("Self-test passed; requesting shutdown as the OS would.");
+            if (_desktop is null || !_desktop.TryShutdown())
+                throw new InvalidOperationException("A shutdown request from the OS was cancelled (window hidden to the tray).");
+            File.WriteAllText(resultPath, summary);
         }
         catch (Exception ex)
         {

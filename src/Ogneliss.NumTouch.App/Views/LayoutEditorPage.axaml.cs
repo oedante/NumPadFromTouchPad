@@ -713,7 +713,7 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
     }
 
     private static bool IsAvailableOnThisPlatform(KeyDefinition d) =>
-        OperatingSystem.IsMacOS() ? PlatformKeyCodes.Mac.ContainsKey(d.Name)
+        OperatingSystem.IsMacOS() ? PlatformKeyCodes.IsAvailableOnMac(d)
         : OperatingSystem.IsLinux() ? PlatformKeyCodes.Linux.ContainsKey(d.Name)
         : true;
 
