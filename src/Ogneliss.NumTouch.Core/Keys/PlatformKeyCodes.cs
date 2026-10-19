@@ -13,14 +13,17 @@ public static class PlatformKeyCodes
     /// <summary>
     /// macOS: клавиши, которых нет на клавиатуре Mac, но у которых есть системный аналог. Print Screen — снимок
     /// всего экрана ⇧⌘3 (сохраняется туда же, куда система сохраняет снимки; без участия мыши, что удобно в режиме
-    /// NumPad); «Калькулятор» — запуск приложения «Калькулятор». Другое поведение (⇧⌘4, ⇧⌘5, снимок в буфер ⌃⇧⌘3)
-    /// можно назначить клавише в редакторе как сочетание.
+    /// NumPad); «Калькулятор» — приложение «Калькулятор»; «Почта» и «Браузер» — почтовая программа и браузер,
+    /// выбранные в системе по умолчанию. Другое поведение (⇧⌘4, ⇧⌘5, снимок в буфер ⌃⇧⌘3) можно назначить клавише
+    /// в редакторе как сочетание.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, MacSubstitute> MacSubstitutes =
         new Dictionary<string, MacSubstitute>(StringComparer.OrdinalIgnoreCase)
         {
             ["PrintScreen"] = MacSubstitute.Shortcut(0x14 /* kVK_ANSI_3 */, command: true, shift: true),
             ["LaunchCalculator"] = MacSubstitute.OpenApp("com.apple.calculator"),
+            ["LaunchMail"] = MacSubstitute.OpenDefaultApp("mailto:someone@example.com"),
+            ["BrowserHome"] = MacSubstitute.OpenDefaultApp("https://example.com"),
         };
 
     public static bool TryGetLinux(KeyDefinition key, out ushort code) => Linux.TryGetValue(key.Name, out code);
@@ -99,9 +102,14 @@ public static class PlatformKeyCodes
     }
 }
 
-/// <summary>Системный аналог клавиши на Mac: сочетание (код клавиши kVK_* и модификаторы) или запуск приложения.</summary>
-public sealed record MacSubstitute(ushort Code, bool Command, bool Shift, string? BundleId)
+/// <summary>
+/// Системный аналог клавиши на Mac: сочетание (код клавиши kVK_* и модификаторы), запуск приложения по идентификатору
+/// пакета или запуск приложения, которое система открывает для адреса (почтовая программа, браузер по умолчанию).
+/// </summary>
+public sealed record MacSubstitute(ushort Code, bool Command, bool Shift, string? BundleId, string? DefaultAppForUrl)
 {
-    public static MacSubstitute Shortcut(ushort code, bool command, bool shift) => new(code, command, shift, null);
-    public static MacSubstitute OpenApp(string bundleId) => new(0, false, false, bundleId);
+    public static MacSubstitute Shortcut(ushort code, bool command, bool shift) => new(code, command, shift, null, null);
+    public static MacSubstitute OpenApp(string bundleId) => new(0, false, false, bundleId, null);
+    public static MacSubstitute OpenDefaultApp(string url) => new(0, false, false, null, url);
+    public bool IsShortcut => BundleId is null && DefaultAppForUrl is null;
 }

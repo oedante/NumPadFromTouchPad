@@ -20,6 +20,16 @@ internal static unsafe class MacNative
     [DllImport(CoreFoundation)] public static extern void CFRunLoopRemoveSource(nint rl, nint source, nint mode);
     [DllImport(CoreFoundation)] public static extern nint CFMachPortCreateRunLoopSource(nint allocator, nint port, nint order);
     [DllImport(CoreFoundation)] public static extern void CFMachPortInvalidate(nint port);
+    public const uint kCFStringEncodingUTF8 = 0x08000100;
+    [DllImport(CoreFoundation)] public static extern nint CFStringCreateWithCString(nint alloc, [MarshalAs(UnmanagedType.LPUTF8Str)] string cStr, uint encoding);
+    [DllImport(CoreFoundation)] [return: MarshalAs(UnmanagedType.U1)] public static extern bool CFStringGetCString(nint str, byte* buffer, nint bufferSize, uint encoding);
+    [DllImport(CoreFoundation)] public static extern nint CFURLCreateWithString(nint alloc, nint urlString, nint baseUrl);
+    [DllImport(CoreFoundation)] public static extern nint CFURLCopyFileSystemPath(nint url, int pathStyle); // 0 = kCFURLPOSIXPathStyle
+
+    // ------------------------------------------------------------------ CoreServices (Launch Services)
+    public const string CoreServices = "/System/Library/Frameworks/CoreServices.framework/CoreServices";
+    /// <summary>Приложение, которое система открывает для адреса (kLSRolesAll = 0xFFFFFFFF). Результат — CFURLRef, освободить CFRelease.</summary>
+    [DllImport(CoreServices)] public static extern nint LSCopyDefaultApplicationURLForURL(nint url, uint roleMask, nint outError);
 
     /// <summary>Глобальная константа kCFRunLoopCommonModes (CFStringRef).</summary>
     public static nint CommonModes

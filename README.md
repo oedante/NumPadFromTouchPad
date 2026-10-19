@@ -50,7 +50,7 @@ Download the file for your system from [Releases](../../releases).
 
 - Windows: older touchpads without Precision Touchpad do not provide touch coordinates; keypresses do not reach windows running as administrator (UIPI); `Ctrl+Alt+Del` cannot be generated; an external mouse is briefly blocked while the touchpad is touched.
 - Linux: the hotkey is not intercepted (the active program receives it too); text input is limited to US-layout characters; `input` group membership is required.
-- macOS: uses the private MultitouchSupport API, so the app cannot be in the Mac App Store and may break in future macOS versions; Print Screen takes a full-screen screenshot (⇧⌘3) and the Calculator key opens Calculator; other app-launch and media keys (Mail, browser home, play/pause) are not available.
+- macOS: uses the private MultitouchSupport API, so the app cannot be in the Mac App Store and may break in future macOS versions; Print Screen takes a full-screen screenshot (⇧⌘3); the Calculator, Mail and Web keys open Calculator and the default mail app and browser; media keys other than volume (such as play/pause) are not available.
 
 ## Privacy
 

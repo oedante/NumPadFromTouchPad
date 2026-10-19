@@ -166,19 +166,20 @@ public class KeyCodeTableTests
             foreach (var z in layout.Keys.Where(z => z.Action.Kind is KeyActionKind.Key or KeyActionKind.Combo))
             {
                 var k = KeyCatalog.Get(z.Action.Key!);
-                // Print Screen и «Калькулятор» на Mac — системными аналогами (⇧⌘3, приложение «Калькулятор»).
+                // Print Screen, «Калькулятор», «Почта», «Браузер» на Mac — системными аналогами (⇧⌘3, приложения).
                 Assert.True(PlatformKeyCodes.IsAvailableOnMac(k), $"{layout.Id}/{z.Id}: клавиша {k.Name} не работает на Mac");
             }
     }
 
     [Fact]
-    public void MacSubstitutes_PrintScreenIsScreenshotShortcut_CalculatorOpensApp()
+    public void MacSubstitutes_PrintScreenIsScreenshotShortcut_AppKeysOpenApps()
     {
         var prt = PlatformKeyCodes.MacSubstitutes["PrintScreen"];
         Assert.Equal((ushort)0x14, prt.Code); // kVK_ANSI_3
-        Assert.True(prt.Command && prt.Shift);
-        Assert.Null(prt.BundleId);
+        Assert.True(prt.IsShortcut && prt.Command && prt.Shift);
         Assert.Equal("com.apple.calculator", PlatformKeyCodes.MacSubstitutes["LaunchCalculator"].BundleId);
+        Assert.StartsWith("mailto:", PlatformKeyCodes.MacSubstitutes["LaunchMail"].DefaultAppForUrl);
+        Assert.StartsWith("https:", PlatformKeyCodes.MacSubstitutes["BrowserHome"].DefaultAppForUrl);
         // Аналог только для клавиш без собственного кода Mac — иначе было бы два способа отправить одну клавишу.
         Assert.All(PlatformKeyCodes.MacSubstitutes.Keys, name => Assert.False(PlatformKeyCodes.Mac.ContainsKey(name), name));
         Assert.All(PlatformKeyCodes.MacSubstitutes.Keys, name => Assert.True(KeyCatalog.TryGet(name, out _), name));

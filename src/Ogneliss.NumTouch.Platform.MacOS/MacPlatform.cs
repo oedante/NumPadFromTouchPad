@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Ogneliss.NumTouch.Core.Config;
@@ -46,19 +45,7 @@ internal sealed unsafe class MacKeyboard : IKeyboardOutput
     /// </summary>
     private bool PostSubstitute(MacSubstitute sub, bool down)
     {
-        if (sub.BundleId is { } bundle)
-        {
-            if (!down) return true;
-            try
-            {
-                var psi = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
-                psi.ArgumentList.Add("-b");
-                psi.ArgumentList.Add(bundle);
-                using var p = Process.Start(psi);
-                return p is not null;
-            }
-            catch (Exception) { return false; }
-        }
+        if (!sub.IsShortcut) return !down || MacSystemActions.Launch(sub);
         lock (_sync)
         {
             ulong cmd = sub.Command ? FlagCommand : 0, all = cmd | (sub.Shift ? FlagShift : 0);

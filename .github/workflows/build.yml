@@ -64,6 +64,14 @@ jobs:
           $code = $LASTEXITCODE
           if (Test-Path TR/t.trx) { [xml]$x = Get-Content TR/t.trx; $c = $x.TestRun.ResultSummary.Counters; Write-Host "::notice title=Tests ${{ matrix.os }}::total=$($c.total) passed=$($c.passed) failed=$($c.failed)" }
           Select-String -Path test.log -Pattern '\[FAIL\]' | Select-Object -First 30 | ForEach-Object { Write-Host "::warning title=Failed test::$($_.Line.Trim())" }
+          # Текст ошибки упавших тестов — в аннотации (журнал задания не всегда доступен).
+          if (Test-Path TR/t.trx) {
+            $x.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' } | Select-Object -First 10 | ForEach-Object {
+              $m = "$($_.Output.ErrorInfo.Message)" -replace "`r?`n", ' / '
+              if ($m.Length -gt 1500) { $m = $m.Substring(0, 1500) }
+              Write-Host "::error title=$($_.testName)::$m"
+            }
+          }
           exit $code
 
       - name: Publish

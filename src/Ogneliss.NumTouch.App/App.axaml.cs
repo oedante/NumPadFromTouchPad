@@ -276,6 +276,15 @@ public partial class App : Application
                 if (TryGetFeature(typeof(IActivatableLifetime)) is null)
                     throw new InvalidOperationException("IActivatableLifetime is not available: the Dock icon would not reopen the window.");
             }
+            // macOS: клавиши «Почта» и «Браузер» открывают программы по умолчанию — проверка запроса к Launch Services.
+            if (OperatingSystem.IsMacOS())
+            {
+                string? browser = Ogneliss.NumTouch.Platform.MacOS.MacSystemActions.DefaultAppFor("https://example.com");
+                string? mail = Ogneliss.NumTouch.Platform.MacOS.MacSystemActions.DefaultAppFor("mailto:someone@example.com");
+                controller.Log.Info($"Default apps: browser={browser ?? "none"}, mail={mail ?? "none"}");
+                if (browser is null || !Directory.Exists(browser))
+                    throw new InvalidOperationException("Launch Services returned no default browser.");
+            }
 
             // Завершение по запросу системы (⌘Q, «Завершить» в Dock, выход из сеанса), когда окно спрятано в трей:
             // закрытие окна в трей не должно отменять завершение.
