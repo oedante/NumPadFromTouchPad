@@ -153,6 +153,8 @@ public sealed class AppController : IDisposable
         InputError = null;
         try { Platform.Touchpad.RefreshDevices(); } catch (Exception ex) { Log.Warn("Device refresh", ex); }
         UpdateInputError();
+        // Сообщение об ошибке горячей клавиши тоже на новом языке: повторная регистрация сохранённого сочетания.
+        if (HotkeyError is not null) ApplyHotkey(Settings.Hotkey, out _);
         StateChanged?.Invoke();
     }
 

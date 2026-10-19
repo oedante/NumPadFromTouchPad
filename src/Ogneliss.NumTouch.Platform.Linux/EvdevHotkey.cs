@@ -34,7 +34,12 @@ internal sealed class EvdevHotkey : IGlobalHotkey
 
     public Hotkey? Current => _current;
     public string? Limitation => L.T("On Linux the shortcut is not intercepted: the active program receives the keypress too.");
-    public string? AccessError { get; private set; }
+    private volatile bool _accessDenied;
+
+    /// <summary>Нет доступа ни к одной клавиатуре. Текст строится при каждом обращении — на текущем языке.</summary>
+    public string? AccessError => _accessDenied
+        ? L.T("No access to keyboards in /dev/input — add your user to the input group and log in again.")
+        : null;
     public event Action? Pressed;
 
     public bool TryRegister(Hotkey hotkey, out string? error)
@@ -80,10 +85,7 @@ internal sealed class EvdevHotkey : IGlobalHotkey
             k.Thread = new Thread(() => ReadLoop(k)) { IsBackground = true, Name = "evdev kbd " + path };
             k.Thread.Start();
         }
-        lock (_sync)
-            AccessError = _keyboards.Count == 0 && denied
-                ? L.T("No access to keyboards in /dev/input — add your user to the input group and log in again.")
-                : null;
+        lock (_sync) _accessDenied = _keyboards.Count == 0 && denied;
     }
 
     private void ReadLoop(Kbd k)
