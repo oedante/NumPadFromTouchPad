@@ -202,16 +202,6 @@ public partial class App : Application
                     }
                 }
                 if (shots is null) continue;
-                // Минимальный размер окна — проверка переносов и обрезки.
-                var (w0, h0) = (_window.Width, _window.Height);
-                _window.Width = _window.MinWidth; _window.Height = _window.MinHeight;
-                await Task.Delay(800);
-                foreach (var tag in new[] { "home", "layout", "settings" })
-                {
-                    await _window.NavigateAsync(tag);
-                    await SaveScreenshotAsync(_window, Path.Combine(shots, $"{code}-min-{tag}.png"));
-                }
-                _window.Width = w0; _window.Height = h0;
                 await _window.NavigateAsync("home");
                 _notifier.Show(L.T("NumPad on"), "NUM20 · Ctrl+Alt+N", OsdKind.On);
                 await Task.Delay(300);

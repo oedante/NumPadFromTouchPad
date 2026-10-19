@@ -382,6 +382,7 @@ internal static class RussianStrings
         { "Width to height ratio of the sticker area", "Отношение ширины области наклейки к высоте" },
         { "Key gap, %", "Промежуток, %" },
         { "Gap between keys in % of the width; keys snap to it", "Промежуток между клавишами в % ширины; клавиши прилипают с этим промежутком" },
+        { "Auto-repeat", "Автоповтор" },
 //APP
     };
 }
