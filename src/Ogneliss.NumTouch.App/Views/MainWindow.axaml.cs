@@ -25,6 +25,9 @@ public partial class MainWindow : Window
     /// <summary>Открытая страница (для восстановления после пересоздания окна при смене языка).</summary>
     public string CurrentPage => _current;
 
+    /// <summary>Элемент открытой страницы.</summary>
+    public Control? CurrentPageControl => _pages.TryGetValue(_current, out var p) ? p : null;
+
     public MainWindow() : this(null!) { } // для дизайнера
 
     public MainWindow(AppController app, string startPage = "home")

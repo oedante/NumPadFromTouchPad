@@ -34,6 +34,9 @@ public sealed class ModeNotifier : IDisposable
     /// <summary>Уведомление видно сейчас (для самопроверки).</summary>
     public bool IsShowing => _osd?.IsVisible == true;
 
+    /// <summary>Окно уведомления (для снимков самопроверки).</summary>
+    internal Window? OsdWindow => _osd;
+
     private void OnModeChanged(InputMode mode, string reason)
     {
         if (!_controller.Settings.ShowNotifications || reason == "application exit") return;

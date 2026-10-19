@@ -134,6 +134,12 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
 
     public void Dispose() => OnHidden();
 
+    /// <summary>Выделить клавишу (для снимков самопроверки).</summary>
+    internal void SelectKeyForPreview(string keyId)
+    {
+        if (_working.Keys.Any(k => k.Id == keyId)) EditorCanvas.SelectedKeyId = keyId;
+    }
+
     // ================================================================= список раскладок
 
     private void LoadLayoutList(string? selectId)

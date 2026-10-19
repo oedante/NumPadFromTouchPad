@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Ogneliss.NumTouch.App.Services;
 using Ogneliss.NumTouch.App.Views;
@@ -142,6 +143,15 @@ public partial class App : Application
     /// Самопроверка для CI (--selftest): главное окно и все страницы (разбор XAML, ресурсы, отрисовка), результат в
     /// selftest-result.txt, код выхода 0 / 2.
     /// </summary>
+    private static async Task SaveScreenshotAsync(Window window, string path)
+    {
+        await Task.Delay(350); // дождаться раскладки и отрисовки
+        var size = new PixelSize(Math.Max(1, (int)Math.Ceiling(window.ClientSize.Width)), Math.Max(1, (int)Math.Ceiling(window.ClientSize.Height)));
+        using var bitmap = new RenderTargetBitmap(size, new Vector(96, 96));
+        bitmap.Render(window);
+        bitmap.Save(path);
+    }
+
     private async Task RunSelfTestAsync()
     {
         var controller = _controller!;
@@ -161,16 +171,42 @@ public partial class App : Application
             _notifier.Hide();
 
             // Смена языка: окно пересоздаётся на текущей странице, обе локали загружаются без ошибок XAML.
+            // NUMTOUCH_SCREENSHOTS=<папка> — снимки всех страниц на обоих языках (CI выкладывает их для проверки вёрстки).
+            string? shots = Environment.GetEnvironmentVariable("NUMTOUCH_SCREENSHOTS") is { Length: > 0 } sd ? sd : null;
+            if (shots is not null) Directory.CreateDirectory(shots);
             foreach (var lang in new[] { UiLanguage.Russian, UiLanguage.English })
             {
                 L.Apply(lang);
                 await Task.Delay(500);
                 if (_window is null || !_window.IsVisible) throw new InvalidOperationException($"Main window was not recreated for {lang}.");
+                string code = L.Code;
                 foreach (var tag in new[] { "layout", "calibration", "settings", "diagnostics", "home" })
                 {
                     await _window.NavigateAsync(tag);
                     await Task.Delay(150);
+                    if (shots is null) continue;
+                    await SaveScreenshotAsync(_window, Path.Combine(shots, $"{code}-{tag}.png"));
+                    if (tag == "layout" && _window.CurrentPageControl is LayoutEditorPage editor)
+                    {
+                        editor.SelectKeyForPreview("n7");
+                        await SaveScreenshotAsync(_window, Path.Combine(shots, $"{code}-layout-selected.png"));
+                    }
                 }
+                if (shots is null) continue;
+                // Минимальный размер окна — проверка переносов и обрезки.
+                var (w0, h0) = (_window.Width, _window.Height);
+                _window.Width = _window.MinWidth; _window.Height = _window.MinHeight;
+                foreach (var tag in new[] { "home", "layout", "settings" })
+                {
+                    await _window.NavigateAsync(tag);
+                    await SaveScreenshotAsync(_window, Path.Combine(shots, $"{code}-min-{tag}.png"));
+                }
+                _window.Width = w0; _window.Height = h0;
+                await _window.NavigateAsync("home");
+                _notifier.Show(L.T("NumPad on"), "NUM20 · Ctrl+Alt+N", OsdKind.On);
+                await Task.Delay(300);
+                if (_notifier.OsdWindow is { } osd) await SaveScreenshotAsync(osd, Path.Combine(shots, $"{code}-osd.png"));
+                _notifier.Hide();
             }
             File.WriteAllText(resultPath, "OK " + controller.DiagnosticsSummary().Replace(Environment.NewLine, " | "));
             controller.Log.Info("Self-test passed.");

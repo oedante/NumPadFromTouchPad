@@ -32,7 +32,7 @@ jobs:
             smoke: osx-arm64
     runs-on: ${{ matrix.os }}
     permissions:
-      contents: read
+      contents: write   # снимки интерфейса публикуются в ветку screenshots (только Windows-сборка)
       id-token: write   # вход в Azure по OIDC для подписи Windows (используется, только если подпись настроена)
     env:
       # Подпись включается сама, когда в репозитории заданы секреты/переменные (см. DISTRIBUTION.md),
@@ -82,6 +82,7 @@ jobs:
         shell: pwsh
         env:
           NUMTOUCH_SELFTEST_RESULT: ${{ github.workspace }}/selftest-result.txt
+          NUMTOUCH_SCREENSHOTS: ${{ runner.os == 'Windows' && format('{0}/screenshots', github.workspace) || '' }}
         run: |
           $dir = "artifacts/${{ matrix.smoke }}"
           $exe = if ($IsWindows) { "$dir/OgnelissNumTouch.exe" } else { "$dir/OgnelissNumTouch" }
@@ -97,6 +98,19 @@ jobs:
           $log = $roots | ForEach-Object { Get-ChildItem -Recurse -Filter numtouch.log -Path $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
           if ($log) { Get-Content $log.FullName | Select-Object -Last 25 | ForEach-Object { Write-Host "::notice title=App log ${{ matrix.os }}::$_" } }
           if ($p.ExitCode -ne 0 -or -not $text.StartsWith("OK")) { exit 1 }
+
+      # Снимки всех страниц (оба языка, обычный и минимальный размер окна) — в ветку screenshots
+      # для проверки вёрстки без скачивания артефактов.
+      - name: Publish UI screenshots
+        if: runner.os == 'Windows' && hashFiles('screenshots/*.png') != ''
+        shell: bash
+        run: |
+          cd screenshots
+          echo "${{ github.sha }} ${{ github.ref_name }}" > SOURCE.txt
+          git init -q && git checkout -q -b screenshots && git add .
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -qm "UI screenshots for ${{ github.sha }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" screenshots
+          echo "::notice title=Screenshots::$(ls *.png | wc -l) PNG -> branch screenshots"
 
       # ---------------------------------------------------------------- Windows: подпись (Azure Artifact Signing)
       - name: Azure login (OIDC)
