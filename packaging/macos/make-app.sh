@@ -12,7 +12,7 @@ version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$root/src/Ogneliss.Num
 short="${version%%-*}"
 rm -rf "$app"; mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp -R "$src/." "$app/Contents/MacOS/"
-cp "$root/src/Ogneliss.NumTouch.App/Assets/tray_on.png" "$app/Contents/Resources/"
+cp "$root/packaging/macos/AppIcon.icns" "$app/Contents/Resources/"
 # В Contents/MacOS должен быть только код (Mach-O): символы отладки библиотек проекта не нужны и мешают подписи.
 find "$app/Contents/MacOS" -name "*.pdb" -delete
 cat > "$app/Contents/Info.plist" <<PLIST
@@ -23,6 +23,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key><string>Ogneliss NumTouch</string>
   <key>CFBundleIdentifier</key><string>ru.ogneliss.numtouch</string>
   <key>CFBundleExecutable</key><string>OgnelissNumTouch</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleVersion</key><string>$short</string>
   <key>CFBundleShortVersionString</key><string>$short</string>
   <key>CFBundlePackageType</key><string>APPL</string>

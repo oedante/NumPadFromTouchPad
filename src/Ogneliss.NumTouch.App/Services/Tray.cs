@@ -24,8 +24,11 @@ public sealed class Tray : IDisposable
     {
         _app = app;
         _controller = controller;
-        _iconOn = new WindowIcon(AssetLoader.Open(new Uri("avares://OgnelissNumTouch/Assets/tray_on.png")));
-        _iconOff = new WindowIcon(AssetLoader.Open(new Uri("avares://OgnelissNumTouch/Assets/tray_off.png")));
+        // Windows: ICO с размерами 16…48 — система берёт точный размер под масштаб экрана (без размытия);
+        // Linux/macOS: PNG 64 px.
+        string ext = OperatingSystem.IsWindows() ? "ico" : "png";
+        _iconOn = new WindowIcon(AssetLoader.Open(new Uri($"avares://OgnelissNumTouch/Assets/tray_on.{ext}")));
+        _iconOff = new WindowIcon(AssetLoader.Open(new Uri($"avares://OgnelissNumTouch/Assets/tray_off.{ext}")));
 
         _toggle = new NativeMenuItem();
         _toggle.Click += (_, _) => _controller.ToggleMode("tray");

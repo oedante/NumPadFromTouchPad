@@ -203,7 +203,6 @@ jobs:
               linux-*)
                 d="dist/OgnelissNumTouch-$rid"; mkdir -p "$d"
                 cp "artifacts/$rid/OgnelissNumTouch" packaging/linux/* "$d/"
-                cp src/Ogneliss.NumTouch.App/Assets/tray_on.png "$d/ogneliss-numtouch.png"
                 tar -C dist -czf "dist/OgnelissNumTouch-$rid.tar.gz" "OgnelissNumTouch-$rid"; rm -rf "$d" ;;
               osx-*)
                 bash packaging/macos/make-app.sh "$rid"

@@ -89,8 +89,8 @@ public partial class HomePage : UserControl, IPage, IDisposable
             var active = _app.ActiveDevice;
             DeviceBox.SelectedItem = devices.FirstOrDefault(d => d.Value.Id == active?.Id);
             DeviceStatus.Text = active is null
-                ? L.T("Touchpad not found")
-                : L.F("{0} · contacts: {1}", active.DeviceKey, active.MaxContacts) + (active.AspectIsPhysical
+                ? ""
+                : L.F("Contacts: {0}", active.MaxContacts) + (active.AspectIsPhysical
                     ? " · " + L.F("{0}×{1} mm", active.WidthMm!.Value.ToString("0"), active.HeightMm!.Value.ToString("0")) : "");
             foreach (var bad in devices.Where(d => !d.Value.IsUsable))
                 DeviceStatus.Text += $"\n{bad.Value.DisplayName}: {bad.Value.Error}";

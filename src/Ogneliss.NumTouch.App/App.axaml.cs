@@ -106,6 +106,7 @@ public partial class App : Application
     private void OnLanguageChanged() => Dispatcher.UIThread.Post(() =>
     {
         if (_controller is null || _exiting) return;
+        _controller.OnLanguageChanged();
         _tray?.Refresh();
         if (_window is not { } old) return;
         string page = old.CurrentPage;
@@ -190,12 +191,20 @@ public partial class App : Application
                     {
                         editor.SelectKeyForPreview("n7");
                         await SaveScreenshotAsync(_window, Path.Combine(shots, $"{code}-layout-selected.png"));
+                        // Перетаскивание: клавиша «8» рядом с «7» — привязка к промежутку и краям, подсказка с положением.
+                        editor.PreviewDrag("n8", Ogneliss.NumTouch.Core.Layouts.ResizeEdges.None, 9, 23, show: true);
+                        await SaveScreenshotAsync(_window, Path.Combine(shots, $"{code}-layout-drag-move.png"));
+                        editor.PreviewDrag("n8", Ogneliss.NumTouch.Core.Layouts.ResizeEdges.None, 0, 0, show: false);
+                        editor.PreviewDrag("n5", Ogneliss.NumTouch.Core.Layouts.ResizeEdges.Right, 23, 0, show: true);
+                        await SaveScreenshotAsync(_window, Path.Combine(shots, $"{code}-layout-drag-resize.png"));
+                        editor.PreviewDrag("n5", Ogneliss.NumTouch.Core.Layouts.ResizeEdges.Right, 0, 0, show: false);
                     }
                 }
                 if (shots is null) continue;
                 // Минимальный размер окна — проверка переносов и обрезки.
                 var (w0, h0) = (_window.Width, _window.Height);
                 _window.Width = _window.MinWidth; _window.Height = _window.MinHeight;
+                await Task.Delay(800);
                 foreach (var tag in new[] { "home", "layout", "settings" })
                 {
                     await _window.NavigateAsync(tag);

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -34,6 +35,8 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
     private bool _dirty;
     private bool _loading;
     private bool _live;
+    private MenuItem _resetItem = null!;
+    private MenuItem _deleteItem = null!;
 
     public LayoutEditorPage() : this(null!) { }
 
@@ -50,20 +53,16 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         KeyBox.ItemsSource = _keyItems;
 
         EditorCanvas.IsEditable = true;
-        EditorCanvas.ShowGrid = true;
+        EditorCanvas.Snap = true;
         EditorCanvas.SelectionChanged += _ => LoadKeyFields();
+        EditorCanvas.KeyDoubleClicked += _ => { LabelBox.Focus(); LabelBox.SelectAll(); };
         EditorCanvas.EditStarting += PushUndo;
         EditorCanvas.Editing += LoadKeyFields;
         EditorCanvas.EditCompleted += () => { MarkDirty(); Validate(); };
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
 
         LayoutBox.SelectionChanged += async (_, _) => await OnLayoutSelected();
-        NewButton.Click += async (_, _) => await OnNew();
-        DuplicateButton.Click += async (_, _) => await OnDuplicate();
-        DeleteLayoutButton.Click += async (_, _) => await OnDeleteLayout();
-        ResetButton.Click += async (_, _) => await OnReset();
-        ImportButton.Click += async (_, _) => await OnImport();
-        ExportButton.Click += async (_, _) => await OnExport();
+        BuildLayoutMenu();
         SaveButton.Click += async (_, _) => await TrySave(apply: false);
         SaveApplyButton.Click += async (_, _) => await TrySave(apply: true);
         RevertButton.Click += (_, _) => Revert();
@@ -72,7 +71,7 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         DeleteKeyButton.Click += (_, _) => DeleteSelectedKey();
         UndoButton.Click += (_, _) => Undo();
         RedoButton.Click += (_, _) => Redo();
-        SnapBox.Click += (_, _) => EditorCanvas.ShowGrid = SnapBox.IsChecked == true;
+        SnapToggle.Click += (_, _) => EditorCanvas.Snap = SnapToggle.IsChecked == true;
         PointerOutsideBox.Click += (_, _) => OnLayoutCheckChanged();
 
         foreach (var tb in new[] { NameBox, GapBox, AspectBox })
@@ -94,6 +93,30 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         LoadLayoutList(_app.ActiveLayout.Id);
     }
 
+    /// <summary>Меню «Действия»: создание, копия, импорт/экспорт, возврат к стандартной, удаление.</summary>
+    private void BuildLayoutMenu()
+    {
+        MenuItem Item(string header, Func<Task> action)
+        {
+            var mi = new MenuItem { Header = header };
+            mi.Click += async (_, _) => await action();
+            return mi;
+        }
+        _resetItem = Item(L.T("Restore default"), OnReset);
+        _deleteItem = Item(L.T("Delete"), OnDeleteLayout);
+        _deleteItem.Foreground = Ui.Brush("ErrorBrush");
+        var flyout = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedLeft };
+        flyout.Items.Add(Item(L.T("New"), OnNew));
+        flyout.Items.Add(Item(L.T("Duplicate"), OnDuplicate));
+        flyout.Items.Add(new Separator());
+        flyout.Items.Add(Item(L.T("Import…"), OnImport));
+        flyout.Items.Add(Item(L.T("Export…"), OnExport));
+        flyout.Items.Add(new Separator());
+        flyout.Items.Add(_resetItem);
+        flyout.Items.Add(_deleteItem);
+        LayoutMenuButton.Flyout = flyout;
+    }
+
     private static string GroupName(KeyGroup g) => g switch
     {
         KeyGroup.Numpad => L.T("numpad"),
@@ -113,6 +136,12 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
     public void OnShown()
     {
         if (!_live) { _app.FrameArrived += OnFrame; _live = true; }
+        // Размер области наклейки в мм — для подсказки при изменении размера клавиши.
+        var dev = _app.ActiveDevice;
+        var area = _app.ActiveTransform.ToDeviceRect();
+        EditorCanvas.AreaSizeMm = dev is { AspectIsPhysical: true }
+            ? new Avalonia.Size(area.Width * dev.WidthMm!.Value, area.Height * dev.HeightMm!.Value)
+            : null;
     }
 
     public async Task<bool> CanLeaveAsync()
@@ -138,6 +167,13 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
     internal void SelectKeyForPreview(string keyId)
     {
         if (_working.Keys.Any(k => k.Id == keyId)) EditorCanvas.SelectedKeyId = keyId;
+    }
+
+    /// <summary>Показать перетаскивание клавиши (для снимков самопроверки); false — завершить.</summary>
+    internal void PreviewDrag(string keyId, ResizeEdges edges, double dxPx, double dyPx, bool show)
+    {
+        if (show) EditorCanvas.BeginPreviewDrag(keyId, edges, dxPx, dyPx);
+        else EditorCanvas.EndPreviewDrag();
     }
 
     // ================================================================= список раскладок
@@ -427,13 +463,22 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         if (sel is null) return;
         if (e.Key is Key.Delete or Key.Back) { DeleteSelectedKey(); e.Handled = true; return; }
 
-        double step = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? 0.02 : 0.004;
+        // Стрелки — сдвиг на 0,5 % (Shift — 2,5 %); Alt+стрелки — изменение ширины/высоты.
+        double step = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? 0.025 : 0.005;
         double dx = e.Key == Key.Left ? -step : e.Key == Key.Right ? step : 0;
         double dy = e.Key == Key.Up ? -step : e.Key == Key.Down ? step : 0;
         if (dx == 0 && dy == 0) return;
         PushUndo();
-        sel.X = Math.Round(Math.Clamp(sel.X + dx, 0, 1 - sel.Width), 5);
-        sel.Y = Math.Round(Math.Clamp(sel.Y + dy, 0, 1 - sel.Height), 5);
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            sel.Width = Math.Round(Math.Clamp(sel.Width + dx, LayoutValidator.MinKeySize, 1 - sel.X), 5);
+            sel.Height = Math.Round(Math.Clamp(sel.Height + dy, LayoutValidator.MinKeySize, 1 - sel.Y), 5);
+        }
+        else
+        {
+            sel.X = Math.Round(Math.Clamp(sel.X + dx, 0, 1 - sel.Width), 5);
+            sel.Y = Math.Round(Math.Clamp(sel.Y + dy, 0, 1 - sel.Height), 5);
+        }
         EditorCanvas.Refresh();
         LoadKeyFields();
         MarkDirty();
@@ -451,8 +496,8 @@ public partial class LayoutEditorPage : UserControl, IPage, IDisposable
         AspectBox.Text = _working.AspectRatio.ToString("0.###", CultureInfo.CurrentCulture);
         PointerOutsideBox.IsChecked = _working.AllowPointerOutsideKeys;
         bool builtIn = BuiltInLayouts.Get(_working.Id) is not null;
-        ResetButton.IsEnabled = builtIn;
-        DeleteLayoutButton.Content = builtIn ? L.T("Delete changes") : L.T("Delete");
+        _resetItem.IsEnabled = builtIn;
+        _deleteItem.Header = builtIn ? L.T("Delete changes") : L.T("Delete");
         _loading = false;
     }
 

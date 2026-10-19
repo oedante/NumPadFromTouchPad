@@ -30,7 +30,7 @@
         <Grid Grid.Row="2" ColumnDefinitions="*,12,*">
             <Border Classes="card" Margin="0">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Classes="section" Text="{l:T 'Contacts (on screen only, never recorded)'}" />
+                    <TextBlock DockPanel.Dock="Top" Classes="section" TextWrapping="Wrap" Text="{l:T 'Contacts (on screen only, never recorded)'}" />
                     <TextBlock x:Name="ContactsText" Classes="mono" />
                 </DockPanel>
             </Border>
@@ -38,7 +38,7 @@
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Classes="section" Text="{l:T 'Log'}" />
                     <TextBox x:Name="LogText" FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="11" IsReadOnly="True"
-                             TextWrapping="NoWrap" AcceptsReturn="True" BorderThickness="0" />
+                             TextWrapping="Wrap" AcceptsReturn="True" BorderThickness="0" />
                 </DockPanel>
             </Border>
         </Grid>

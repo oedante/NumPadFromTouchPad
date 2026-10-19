@@ -140,7 +140,7 @@ internal sealed class PrecisionTouchpad : ITouchpadBackend
         string path = GetDeviceName(h);
         var parser = HidReportParser.Create(h, out var err);
         string key = MakeDeviceKey(path, vid, pid);
-        string name = GetProductName(path) ?? $"Precision Touchpad ({key})";
+        string name = GetProductName(path) ?? FallbackName(key);
         var info = new TouchpadDeviceInfo(h.ToString(), key, name,
             parser?.MaxContacts ?? 0,
             parser is null ? 0 : parser.XAxis.LogicalMax - parser.XAxis.LogicalMin,
@@ -170,6 +170,27 @@ internal sealed class PrecisionTouchpad : ITouchpadBackend
         var buf = new char[chars];
         if (GetRawInputDeviceInfoString(h, RIDI_DEVICENAME, buf, ref chars) == unchecked((uint)-1)) return "";
         return new string(buf).TrimEnd('\0');
+    }
+
+    /// <summary>Имя, если драйвер не сообщает название: производитель по VID (самые распространённые) или ключ.</summary>
+    internal static string FallbackName(string key)
+    {
+        var m = Regex.Match(key, @"VID_([0-9A-F]{4})", RegexOptions.IgnoreCase);
+        string? vendor = m.Success ? m.Groups[1].Value.ToUpperInvariant() switch
+        {
+            "05AC" => "Apple",
+            "06CB" => "Synaptics",
+            "04F3" => "ELAN",
+            "044E" => "Alps",
+            "045E" => "Microsoft",
+            "093A" => "PixArt",
+            "27C6" => "Goodix",
+            "2808" => "FocalTech",
+            _ => null,
+        } : key.StartsWith("ELAN", StringComparison.OrdinalIgnoreCase) ? "ELAN"
+          : key.StartsWith("SYNA", StringComparison.OrdinalIgnoreCase) ? "Synaptics"
+          : key.StartsWith("MSFT", StringComparison.OrdinalIgnoreCase) ? "Microsoft" : null;
+        return vendor is null ? $"Precision Touchpad ({key})" : $"{vendor} Precision Touchpad";
     }
 
     internal static string MakeDeviceKey(string path, int vid, int pid)

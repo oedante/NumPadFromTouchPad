@@ -3,77 +3,86 @@
              xmlns:c="using:Ogneliss.NumTouch.App.Controls"
              xmlns:l="using:Ogneliss.NumTouch.App.Localization"
              x:Class="Ogneliss.NumTouch.App.Views.HomePage">
-    <ScrollViewer>
-        <StackPanel Margin="28,24,28,24">
+    <!-- Без прокрутки: предпросмотр занимает всё оставшееся место. -->
+    <Grid Margin="28,24,28,20" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
             <TextBlock Classes="title" Text="{l:T 'Home'}" />
-            <TextBlock Classes="subtle" Text="{l:T 'The touchpad turns into a numpad when you press the hotkey.'}" Margin="0,4,0,16" />
-
-            <Border x:Name="ErrorCard" Classes="card" BorderBrush="{StaticResource ErrorBrush}" IsVisible="False">
-                <TextBlock x:Name="ErrorText" TextWrapping="Wrap" Foreground="{StaticResource ErrorBrush}" />
-            </Border>
-
-            <Border Classes="card">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Border x:Name="ModeBadge" CornerRadius="12" Padding="12,4" Background="{StaticResource BadgeOffBrush}">
-                                <TextBlock x:Name="ModeBadgeText" Text="{l:T 'OFF'}" FontWeight="Bold" FontSize="13" />
-                            </Border>
-                            <TextBlock x:Name="ModeTitle" Text="{l:T 'NumPad mode is off'}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        </StackPanel>
-                        <TextBlock x:Name="ModeHint" Classes="subtle" Margin="0,8,0,0" />
-                    </StackPanel>
-                    <Button x:Name="ModeButton" Grid.Column="1" Classes="primary" MinWidth="170" Height="44"
-                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                            Content="{l:T 'Turn NumPad on'}" VerticalAlignment="Center" />
-                </Grid>
-            </Border>
-
-            <Grid ColumnDefinitions="*,12,*,12,*">
-                <Border Grid.Column="0" Classes="card">
-                    <StackPanel>
-                        <TextBlock Classes="label" Text="{l:T 'Device'}" Margin="0,0,0,4" />
-                        <ComboBox x:Name="DeviceBox" HorizontalAlignment="Stretch" />
-                        <TextBlock x:Name="DeviceStatus" Classes="subtle" FontSize="12" Margin="0,6,0,0" />
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="2" Classes="card">
-                    <StackPanel>
-                        <TextBlock Classes="label" Text="{l:T 'Layout'}" Margin="0,0,0,4" />
-                        <ComboBox x:Name="LayoutBox" HorizontalAlignment="Stretch" />
-                        <TextBlock x:Name="CalibrationStatus" Classes="subtle" FontSize="12" Margin="0,6,0,0" />
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="4" Classes="card">
-                    <StackPanel>
-                        <TextBlock Classes="label" Text="{l:T 'Hotkey'}" Margin="0,0,0,4" />
-                        <TextBlock x:Name="HotkeyText" FontSize="18" FontWeight="SemiBold" />
-                        <TextBlock x:Name="HotkeyStatus" Classes="subtle" FontSize="12" Margin="0,6,0,0" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <Border Classes="card">
-                <StackPanel>
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-                            <Button x:Name="OpenCalibration" Content="{l:T 'Calibration'}" />
-                            <Button x:Name="OpenEditor" Content="{l:T 'Layout editor'}" />
-                        </StackPanel>
-                        <TextBlock Classes="section" Text="{l:T 'Preview'}" VerticalAlignment="Center" Margin="0" />
-                    </DockPanel>
-                    <TextBlock Classes="subtle" Text="{l:T 'Touchpad contacts are shown in real time; recognized keys are highlighted.'}" Margin="0,6,0,8" />
-                    <c:LayoutCanvas x:Name="Preview" Height="320" />
-                </StackPanel>
-            </Border>
-
-            <Border x:Name="WarningsCard" Classes="card" IsVisible="False">
-                <StackPanel>
-                    <TextBlock Classes="section" Text="{l:T 'Warnings'}" Foreground="{StaticResource WarningBrush}" />
-                    <TextBlock x:Name="WarningsText" TextWrapping="Wrap" />
-                    <Button x:Name="DismissWarnings" Content="{l:T 'Dismiss'}" Margin="0,8,0,0" />
-                </StackPanel>
-            </Border>
+            <TextBlock Classes="subtle" Text="{l:T 'The touchpad turns into a numpad when you press the hotkey.'}" Margin="0,4,0,0" />
         </StackPanel>
-    </ScrollViewer>
+
+        <Border Grid.Row="1" x:Name="ErrorCard" Classes="card" BorderBrush="{StaticResource ErrorBrush}" Background="#FDF3F2" IsVisible="False">
+            <Grid ColumnDefinitions="Auto,*">
+                <PathIcon Width="18" Height="18" Foreground="{StaticResource ErrorBrush}" VerticalAlignment="Top" Margin="0,1,10,0"
+                          Data="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" />
+                <TextBlock Grid.Column="1" x:Name="ErrorText" TextWrapping="Wrap" Foreground="{StaticResource ErrorBrush}" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Classes="card">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Border x:Name="ModeBadge" CornerRadius="12" Padding="12,4" Background="{StaticResource BadgeOffBrush}" VerticalAlignment="Center">
+                            <TextBlock x:Name="ModeBadgeText" Text="{l:T 'OFF'}" FontWeight="Bold" FontSize="13" />
+                        </Border>
+                        <TextBlock x:Name="ModeTitle" Text="{l:T 'NumPad mode is off'}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="ModeHint" Classes="subtle" Margin="0,8,0,0" />
+                </StackPanel>
+                <Button x:Name="ModeButton" Grid.Column="1" Classes="primary" MinWidth="180" Height="44" Margin="16,0,0,0"
+                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                        Content="{l:T 'Turn NumPad on'}" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="3" ColumnDefinitions="3*,12,3*,12,2*">
+            <Border Grid.Column="0" Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:T 'Device'}" Margin="0,0,0,4" />
+                    <ComboBox x:Name="DeviceBox" HorizontalAlignment="Stretch" PlaceholderText="{l:T 'Touchpad not found'}" />
+                    <TextBlock x:Name="DeviceStatus" Classes="subtle" FontSize="12" Margin="0,6,0,0" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:T 'Layout'}" Margin="0,0,0,4" />
+                    <ComboBox x:Name="LayoutBox" HorizontalAlignment="Stretch" />
+                    <TextBlock x:Name="CalibrationStatus" Classes="subtle" FontSize="12" Margin="0,6,0,0" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="4" Classes="card">
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:T 'Hotkey'}" Margin="0,0,0,4" />
+                    <Border Classes="keycap" HorizontalAlignment="Left">
+                        <TextBlock x:Name="HotkeyText" FontSize="15" FontWeight="SemiBold" />
+                    </Border>
+                    <TextBlock x:Name="HotkeyStatus" Classes="subtle" FontSize="12" Margin="0,6,0,0" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="4" x:Name="WarningsCard" Classes="card" BorderBrush="{StaticResource AccentDarkBrush}" Background="{StaticResource HintBrush}" IsVisible="False">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock x:Name="WarningsText" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="1" x:Name="DismissWarnings" Content="{l:T 'Dismiss'}" Margin="12,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="5" Classes="card" Margin="0">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button x:Name="OpenCalibration" Content="{l:T 'Calibration'}" />
+                        <Button x:Name="OpenEditor" Content="{l:T 'Layout editor'}" />
+                    </StackPanel>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Classes="section" Text="{l:T 'Preview'}" Margin="0" />
+                        <TextBlock Classes="subtle" FontSize="12" Margin="0,2,0,0"
+                                   Text="{l:T 'Touchpad contacts are shown in real time; recognized keys are highlighted.'}" />
+                    </StackPanel>
+                </DockPanel>
+                <c:LayoutCanvas x:Name="Preview" MinHeight="150" Margin="0,8,0,0" />
+            </DockPanel>
+        </Border>
+    </Grid>
 </UserControl>

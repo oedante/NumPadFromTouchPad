@@ -146,6 +146,16 @@ public sealed class AppController : IDisposable
         }
     }
 
+    /// <summary>Язык сменился: встроенные раскладки и сообщения об устройстве — заново, на новом языке.</summary>
+    public void OnLanguageChanged()
+    {
+        ReloadLayouts();
+        InputError = null;
+        try { Platform.Touchpad.RefreshDevices(); } catch (Exception ex) { Log.Warn("Device refresh", ex); }
+        UpdateInputError();
+        StateChanged?.Invoke();
+    }
+
     public void ReloadLayouts()
     {
         var res = Store.LoadLayouts();

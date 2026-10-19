@@ -56,6 +56,14 @@ public class HidFrameAssemblerTests
     [InlineData(@"\\?\HID#ELAN0001&Col02#4&2d1#{4d1e55b2}", "ELAN0001")]
     public void WindowsDeviceKey(string path, string expected) =>
         Assert.Equal(expected, Ogneliss.NumTouch.Platform.Windows.PrecisionTouchpad.MakeDeviceKey(path, 0, 0));
+
+    [Theory]
+    [InlineData("VID_05AC&PID_0340", "Apple Precision Touchpad")]
+    [InlineData("VID_06CB&PID_CE26", "Synaptics Precision Touchpad")]
+    [InlineData("ELAN0001", "ELAN Precision Touchpad")]
+    [InlineData("VID_1234&PID_0001", "Precision Touchpad (VID_1234&PID_0001)")]
+    public void WindowsFallbackDeviceName(string key, string expected) =>
+        Assert.Equal(expected, Ogneliss.NumTouch.Platform.Windows.PrecisionTouchpad.FallbackName(key));
 }
 
 public class MultitouchDecoderTests

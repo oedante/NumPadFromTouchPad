@@ -17,7 +17,7 @@
         </StackPanel>
 
         <!-- Шаг 1 -->
-        <ScrollViewer x:Name="PrepareStep" Grid.Row="2">
+        <ScrollViewer x:Name="PrepareStep" Grid.Row="2" Padding="0,0,14,0">
             <StackPanel>
                 <Border Classes="card">
                     <StackPanel>
