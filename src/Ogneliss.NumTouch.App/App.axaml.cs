@@ -147,6 +147,7 @@ public partial class App : Application
     private static async Task SaveScreenshotAsync(Window window, string path)
     {
         await Task.Delay(350); // дождаться раскладки и отрисовки
+        window.UpdateLayout();
         var size = new PixelSize(Math.Max(1, (int)Math.Ceiling(window.ClientSize.Width)), Math.Max(1, (int)Math.Ceiling(window.ClientSize.Height)));
         using var bitmap = new RenderTargetBitmap(size, new Vector(96, 96));
         bitmap.Render(window);

@@ -19,7 +19,7 @@
         <!-- Выбор раскладки и инструменты -->
         <Grid Grid.Row="1" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="150" MaxWidth="340" />
+                <ColumnDefinition Width="3*" MinWidth="150" MaxWidth="340" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
