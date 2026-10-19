@@ -107,6 +107,21 @@ jobs:
           if ($log) { Get-Content $log.FullName | Select-Object -Last 25 | ForEach-Object { Write-Host "::notice title=App log ${{ matrix.os }}::$_" } }
           if ($p.ExitCode -ne 0 -or -not $text.StartsWith("OK")) { exit 1 }
 
+      # Windows 10: шрифта Segoe UI Variable нет (только Windows 11 и Server 2025), программа должна выбрать Segoe UI.
+      # Раннер — Server 2025, поэтому отсутствие шрифта имитируется; без исправления окно не создавалось вовсе.
+      - name: UI self-test without Segoe UI Variable (Windows 10)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          NUMTOUCH_SELFTEST_RESULT: ${{ github.workspace }}/selftest-win10.txt
+          NUMTOUCH_FONT_UNAVAILABLE: Segoe UI Variable Text;Cascadia Mono
+        run: |
+          $p = Start-Process "artifacts/${{ matrix.smoke }}/OgnelissNumTouch.exe" -ArgumentList "--selftest" -PassThru
+          if (-not $p.WaitForExit(120000)) { Stop-Process -Id $p.Id -Force; Write-Host "::error title=Self-test Windows 10::timeout"; exit 1 }
+          $text = if (Test-Path $env:NUMTOUCH_SELFTEST_RESULT) { Get-Content $env:NUMTOUCH_SELFTEST_RESULT -Raw } else { "no result file" }
+          Write-Host "::notice title=Self-test Windows 10 font (exit $($p.ExitCode))::$($text -replace "`r?`n", ' / ')"
+          if ($p.ExitCode -ne 0 -or -not $text.StartsWith("OK") -or $text -notmatch 'Font: Segoe UI \(Segoe UI\)') { exit 1 }
+
       # Снимки всех страниц (оба языка, светлая и тёмная тема) — в ветку screenshots-<ОС>
       # для проверки вёрстки на каждой системе без скачивания артефактов.
       - name: Publish UI screenshots

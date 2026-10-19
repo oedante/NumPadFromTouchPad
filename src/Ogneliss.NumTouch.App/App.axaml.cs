@@ -96,6 +96,17 @@ public partial class App : Application
     /// <summary>Показать окно; <paramref name="page"/> — открыть эту страницу (null — оставить текущую).</summary>
     private void ShowMainWindow(string? page)
     {
+        try { ShowMainWindowCore(page); }
+        catch (Exception ex) when (!_selfTest)
+        {
+            // Окно не создалось (например, нет шрифта): программа продолжает работать в трее, причина — в журнале.
+            _controller?.Log.Error("Could not open the main window", ex);
+            if (_window is { IsVisible: false }) _window = null;
+        }
+    }
+
+    private void ShowMainWindowCore(string? page)
+    {
         if (_controller is null || _exiting) return;
         bool created = false;
         if (_window is null)

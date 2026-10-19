@@ -21,33 +21,61 @@ public static class PlatformTheme
     /// <summary>Класс окна для стилей конкретной ОС.</summary>
     public static string OsClass => Os switch { OsFamily.MacOS => "mac", OsFamily.Linux => "linux", _ => "win" };
 
-    /// <summary>Системный шрифт интерфейса и запасные варианты (для Linux — шрифт по умолчанию fontconfig).</summary>
-    public static FontManagerOptions FontOptions() => Os switch
+    /// <summary>
+    /// Системный шрифт интерфейса — первый из установленных: Windows 11 — Segoe UI Variable, Windows 10 — Segoe UI
+    /// (Segoe UI Variable там нет: шрифт по умолчанию, которого нет в системе, роняет создание любого окна);
+    /// macOS — San Francisco; Linux — шрифт по умолчанию fontconfig. Остальные установленные — запасные (для символов,
+    /// которых нет в основном шрифте). Ничего не нашлось — шрифт по умолчанию Avalonia (есть всегда).
+    /// </summary>
+    public static FontManagerOptions FontOptions()
     {
-        OsFamily.Windows => new FontManagerOptions
+        string[] candidates = Os switch
         {
-            DefaultFamilyName = "Segoe UI Variable Text",
-            FontFallbacks = new[] { new FontFallback { FontFamily = new FontFamily("Segoe UI") } },
-        },
-        OsFamily.MacOS => new FontManagerOptions
+            OsFamily.Windows => new[] { "Segoe UI Variable Text", "Segoe UI" },
+            OsFamily.MacOS => new[] { ".AppleSystemUIFont", "SF Pro Text", "Helvetica Neue" },
+            _ => Array.Empty<string>(), // Linux: системный шрифт (Cantarell, Ubuntu, Noto Sans…) через fontconfig
+        };
+        var installed = candidates.Where(IsFontInstalled).ToList();
+        if (installed.Count == 0) return new FontManagerOptions();
+        return new FontManagerOptions
         {
-            DefaultFamilyName = ".AppleSystemUIFont",
-            FontFallbacks = new[]
-            {
-                new FontFallback { FontFamily = new FontFamily("SF Pro Text") },
-                new FontFallback { FontFamily = new FontFamily("Helvetica Neue") },
-            },
-        },
-        _ => new FontManagerOptions(), // Linux: системный шрифт (Cantarell, Ubuntu, Noto Sans…) через fontconfig
-    };
+            DefaultFamilyName = installed[0],
+            FontFallbacks = installed.Skip(1).Select(f => new FontFallback { FontFamily = new FontFamily(f) }).ToArray(),
+        };
+    }
 
-    /// <summary>Моноширинный шрифт системы (диагностика).</summary>
-    public static string MonoFont => Os switch
+    /// <summary>Моноширинный шрифт системы (диагностика): установленные из списка, иначе шрифт по умолчанию.</summary>
+    public static string MonoFont
     {
-        OsFamily.MacOS => "SF Mono, Menlo, Monaco",
-        OsFamily.Linux => "monospace, DejaVu Sans Mono, Liberation Mono",
-        _ => "Cascadia Mono, Consolas, Courier New",
-    };
+        get
+        {
+            string[] candidates = Os switch
+            {
+                OsFamily.MacOS => new[] { "SF Mono", "Menlo", "Monaco" },
+                OsFamily.Linux => new[] { "monospace", "DejaVu Sans Mono", "Liberation Mono" },
+                _ => new[] { "Cascadia Mono", "Consolas", "Courier New" },
+            };
+            var installed = Os == OsFamily.Linux ? candidates.ToList() : candidates.Where(IsFontInstalled).ToList();
+            return installed.Count > 0 ? string.Join(", ", installed) : FontFamily.DefaultFontFamilyName;
+        }
+    }
+
+    /// <summary>
+    /// Установлен ли шрифт — тем же запросом, которым Avalonia ищет шрифт (SKFontManager.MatchFamily).
+    /// NUMTOUCH_FONT_UNAVAILABLE=«имя;имя» — считать шрифты отсутствующими (самопроверка в CI имитирует Windows 10).
+    /// </summary>
+    private static bool IsFontInstalled(string family)
+    {
+        if (Environment.GetEnvironmentVariable("NUMTOUCH_FONT_UNAVAILABLE") is { Length: > 0 } missing
+            && missing.Split(';', StringSplitOptions.TrimEntries).Contains(family, StringComparer.OrdinalIgnoreCase))
+            return false;
+        try
+        {
+            using var typeface = SkiaSharp.SKFontManager.Default.MatchFamily(family, SkiaSharp.SKFontStyle.Normal);
+            return typeface is not null;
+        }
+        catch (Exception) { return false; }
+    }
 
     /// <summary>Порядок кнопок диалога: в Windows утвердительная кнопка первой, в macOS и GNOME — последней (справа).</summary>
     public static bool AffirmativeLast => Os != OsFamily.Windows;
