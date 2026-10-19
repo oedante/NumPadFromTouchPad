@@ -1,3 +1,5 @@
+<img src="docs/icon.png" width="96" align="right" alt="Ogneliss NumTouch icon">
+
 # Ogneliss NumTouch
 
 **English** · [Русский](README.ru.md)
@@ -12,7 +14,7 @@ The program does not draw a keyboard on the screen: it reads real touches from t
 
 | OS | Status | Requirements |
 |---|---|---|
-| **Windows 10 1809+ / 11** (x64, ARM64) | primary; builds and passes the UI self-test in CI, **not yet tested on a real touchpad** | Precision Touchpad (almost every recent laptop) |
+| **Windows 10 1809+ / 11** (x64, ARM64) | primary; builds and passes the UI self-test in CI; confirmed working by the author with an Apple touchpad (Precision Touchpad); the full hardware checklist is pending | Precision Touchpad (almost every recent laptop) |
 | **Linux** (x64, ARM64; X11 and Wayland) | builds and passes the UI self-test in CI, not yet tested on a real touchpad | any multitouch touchpad; `input` group and a udev rule (installed by `install.sh`) |
 | **macOS 12+** (Apple Silicon, Intel) | prototype: builds and starts in CI, not tested on a MacBook | Accessibility permission |
 
@@ -34,7 +36,7 @@ Download the file for your system from [Releases](../../releases).
 
 ## Features
 
-- **Layout editor:** move and resize keys with the mouse or numerically, snap to grid, gaps, sticker aspect ratio; actions — a key (numpad, navigation, F1–F24, letters, modifiers, media), a shortcut, typing text, or an empty zone; labels; disabled zones; auto-repeat; undo/redo; import/export; restore defaults; error checking; live touchpad contacts drawn over the diagram before saving.
+- **Layout editor:** move and resize keys by any edge or corner or numerically, with smart snapping to neighboring keys, the layout gap, the edges, equal sizes and the grid (guides, rulers and a live size readout, also in millimetres); gaps, sticker aspect ratio; actions — a key (numpad, navigation, F1–F24, letters, modifiers, media), a shortcut, typing text, or an empty zone; labels; disabled zones; auto-repeat; undo/redo; import/export; restore defaults; error checking; live touchpad contacts drawn over the diagram before saving.
 - **Calibration:** five reference keys give the position, scale and tilt of the sticker; dry-run check; manual bounds; a separate profile for each touchpad.
 - Hold, auto-repeat, several fingers at once, Shift/Ctrl on the touchpad.
 - Real numpad keys (`Num 7`, `Num Enter`…), not the digits of the main row.

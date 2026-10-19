@@ -40,7 +40,7 @@ public sealed class LayoutCanvas : Control
     private static readonly IBrush RulerTextBrush = new ImmutableSolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x86));
     private static readonly IBrush RulerBandBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x90, 0xFF, 0xD9, 0x64));
     private static readonly IBrush ReadoutBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xE8, 0x26, 0x26, 0x26));
-    private static readonly IBrush GuideBrush = new ImmutableSolidColorBrush(Color.FromRgb(0xE0, 0x3E, 0x6E));
+    private static readonly ImmutableSolidColorBrush GuideBrush = new ImmutableSolidColorBrush(Color.FromRgb(0xE0, 0x3E, 0x6E));
     private static readonly IPen KeyPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0xC8, 0xC8, 0xC2)), 1);
     private static readonly IPen DisabledPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0xB0, 0xB0, 0xAA)), 1, new ImmutableDashStyle(new double[] { 3, 2 }, 0));
     private static readonly IPen SelectedPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromRgb(0x32, 0x32, 0x32)), 2);
