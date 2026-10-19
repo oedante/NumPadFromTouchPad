@@ -53,6 +53,21 @@ public static class L
     public static string F(string english, params object?[] args) =>
         string.Format(CultureInfo.CurrentCulture, T(english), args);
 
+    private static readonly Lazy<Dictionary<string, string>> Reverse = new(() =>
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (en, ru) in RussianStrings.Table) map.TryAdd(ru, en);
+        return map;
+    });
+
+    /// <summary>
+    /// Перевести заново на текущий язык уже готовый текст сообщения — на любом из языков программы. Нужно для
+    /// сообщений, которые платформа сформировала при запуске (нет доступа к устройству и т. п.): после смены языка
+    /// они показываются на новом языке без перезапуска. Текст с подстановками и незнакомый текст — как есть.
+    /// </summary>
+    public static string Retranslate(string text) =>
+        T(Reverse.Value.TryGetValue(text, out var english) ? english : text);
+
     /// <summary>
     /// Пометка «это ключ перевода» без перевода (для данных, переводимых позже через <see cref="T"/>,
     /// например названий клавиш в справочнике).

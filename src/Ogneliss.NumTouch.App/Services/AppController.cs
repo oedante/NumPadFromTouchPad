@@ -225,7 +225,7 @@ public sealed class AppController : IDisposable
     private void UpdateInputError()
     {
         InputError = Platform.Touchpad.Devices.Any(d => d.IsUsable) ? null
-            : Platform.Touchpad.UnavailableReason ?? InputError ?? L.T("Touchpad not found.");
+            : (Platform.Touchpad.UnavailableReason is { } reason ? L.Retranslate(reason) : null) ?? InputError ?? L.T("Touchpad not found.");
     }
 
     private void OnDevicesChanged()
@@ -482,7 +482,7 @@ public sealed class AppController : IDisposable
             L.F("Font: {0}", ResolvedFontName()),
             L.F("Version: {0}", AboutInfo.Version),
         };
-        lines.AddRange(Platform.Problems.Select(p => L.F("Problem: {0}", p)));
+        lines.AddRange(Platform.Problems.Select(p => L.F("Problem: {0}", L.Retranslate(p))));
         return string.Join(Environment.NewLine, lines);
     }
 

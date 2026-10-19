@@ -81,7 +81,7 @@ public partial class HomePage : UserControl, IPage, IDisposable
 
             var problems = new List<string>();
             if (_app.InputError is not null) problems.Add(_app.InputError);
-            problems.AddRange(_app.Platform.Problems.Where(p => p != _app.InputError));
+            problems.AddRange(_app.Platform.Problems.Select(L.Retranslate).Where(p => p != _app.InputError));
             ErrorCard.IsVisible = problems.Count > 0;
             ErrorText.Text = string.Join(Environment.NewLine + Environment.NewLine, problems);
 
@@ -94,7 +94,7 @@ public partial class HomePage : UserControl, IPage, IDisposable
                 : L.F("Contacts: {0}", active.MaxContacts) + (active.AspectIsPhysical
                     ? " · " + L.F("{0}×{1} mm", active.WidthMm!.Value.ToString("0"), active.HeightMm!.Value.ToString("0")) : "");
             foreach (var bad in devices.Where(d => !d.Value.IsUsable))
-                DeviceStatus.Text += $"\n{bad.Value.DisplayName}: {bad.Value.Error}";
+                DeviceStatus.Text += $"\n{bad.Value.DisplayName}: {(bad.Value.Error is { } e ? L.Retranslate(e) : "")}";
 
             var layouts = _app.Layouts.Select(l => new Choice<Layout>(l, l.Name)).ToList();
             LayoutBox.ItemsSource = layouts;

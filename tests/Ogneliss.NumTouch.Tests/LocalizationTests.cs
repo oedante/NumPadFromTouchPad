@@ -154,4 +154,13 @@ public class LocalizationTests
         Assert.Equal("Point 2 of 5", L.F("Point {0} of {1}", 2, 5));
         Assert.Equal("Калибровка", RussianStrings.Table["Calibration"]);
     }
+
+    [Fact]
+    public void Retranslate_BringsAnyLanguageToCurrent()
+    {
+        // Текущий язык тестов — английский: русское сообщение, сформированное до смены языка, становится английским.
+        Assert.Equal("Calibration", L.Retranslate(RussianStrings.Table["Calibration"]));
+        Assert.Equal("Calibration", L.Retranslate("Calibration"));
+        Assert.Equal("/dev/uinput: errno 5", L.Retranslate("/dev/uinput: errno 5"));
+    }
 }
