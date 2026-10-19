@@ -330,7 +330,7 @@ public sealed class LayoutCanvas : Control
     /// </summary>
     private static void DrawLabel(DrawingContext dc, string label, Rect r, double unit, IBrush brush)
     {
-        const double MinFont = 6.5, LineHeight = 1.22;
+        const double MinFont = 5.5, LineHeight = 1.22;
         double maxW = Math.Max(1, r.Width - 5), maxH = Math.Max(1, r.Height - 4);
         double fs = Math.Clamp(Math.Min(Math.Min(r.Height * 0.5, maxH / LineHeight), unit * 0.065), MinFont, 22);
 

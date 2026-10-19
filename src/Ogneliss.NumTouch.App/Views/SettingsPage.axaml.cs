@@ -14,6 +14,8 @@ public partial class SettingsPage : UserControl, IPage
 {
     private readonly AppController _app;
     private readonly Avalonia.Threading.DispatcherTimer _applyTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
+    /// <summary>Сочетание в виде «Ctrl+Alt+N» (так хранится и разбирается); в поле — в обозначениях ОС (⌃⌥N в macOS).</summary>
+    private string _hotkeyRaw = "";
     private bool _loading = true; // до первой загрузки значения элементов не применяются
 
     public SettingsPage() : this(null!) { }
@@ -30,7 +32,8 @@ public partial class SettingsPage : UserControl, IPage
         foreach (var cb in new CheckBox[] { RepeatBox, NumLockBox, PalmBox, GesturesBox, AutostartBox, MinimizedBox, CloseToTrayBox, RestoreModeBox, LogBox, NotificationsBox })
             cb.Click += (_, _) => Changed(immediate: true);
         ApplyHotkeyButton.Click += async (_, _) => await ApplyHotkey();
-        DefaultHotkeyButton.Click += async (_, _) => { HotkeyBox.Text = Hotkey.Default.ToString(); await ApplyHotkey(); };
+        DefaultHotkeyButton.Click += async (_, _) => { SetHotkeyText(Hotkey.Default.ToString()); await ApplyHotkey(); };
+        HotkeyHelp.Text = L.F("Click the field and press the shortcut you want (for example, {0}).", PlatformTheme.HotkeyText("Ctrl+Alt+N"));
         HotkeyBox.AddHandler(KeyDownEvent, OnHotkeyKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         OpenFolderButton.Click += (_, _) => OpenFolder(_app.Store.RootDir);
         AboutVersion.Text = "Ogneliss NumTouch " + AboutInfo.Version;
@@ -78,7 +81,7 @@ public partial class SettingsPage : UserControl, IPage
     private void LoadCore()
     {
         var s = _app.Settings;
-        HotkeyBox.Text = _app.CurrentHotkeyText;
+        SetHotkeyText(_app.CurrentHotkeyText);
         ShowHotkeyStatus();
 
         Select(TriggerBox, s.Engine.PressTrigger.ToString());
@@ -153,13 +156,13 @@ public partial class SettingsPage : UserControl, IPage
         e.Handled = true;
         if (e.Key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)
         {
-            HotkeyBox.Text = ModifierText(e.KeyModifiers) + "…";
+            HotkeyBox.Text = PlatformTheme.HotkeyText(ModifierText(e.KeyModifiers) + "X").TrimEnd('X') + "…";
             return;
         }
         var name = KeyNameFromAvalonia(e.Key);
         if (name is null) { HotkeyStatus.Text = L.T("This key cannot be used in a shortcut."); return; }
-        HotkeyBox.Text = ModifierText(e.KeyModifiers) + name;
-        if (Hotkey.TryParse(HotkeyBox.Text, out var hk, out var err))
+        SetHotkeyText(ModifierText(e.KeyModifiers) + name);
+        if (Hotkey.TryParse(_hotkeyRaw, out var hk, out var err))
         {
             var warn = hk.GetConflictWarning();
             HotkeyStatus.Text = warn is null ? L.T("Press “Assign” to apply.") : "⚠ " + warn;
@@ -170,6 +173,12 @@ public partial class SettingsPage : UserControl, IPage
             HotkeyStatus.Text = err;
             HotkeyStatus.Foreground = Ui.Brush("ErrorBrush");
         }
+    }
+
+    private void SetHotkeyText(string raw)
+    {
+        _hotkeyRaw = raw;
+        HotkeyBox.Text = PlatformTheme.HotkeyText(raw);
     }
 
     private static string ModifierText(KeyModifiers m)
@@ -224,16 +233,16 @@ public partial class SettingsPage : UserControl, IPage
 
     private async Task ApplyHotkey()
     {
-        if (!Hotkey.TryParse(HotkeyBox.Text, out var hk, out var err))
+        if (!Hotkey.TryParse(_hotkeyRaw, out var hk, out var err))
         {
             HotkeyStatus.Text = err;
             HotkeyStatus.Foreground = Ui.Brush("ErrorBrush");
             return;
         }
         var warn = hk.GetConflictWarning();
-        if (warn is not null && !await Dialogs.ConfirmAsync(this, L.T("Hotkey"), $"{hk}: {warn}\n\n" + L.T("Assign anyway?"))) return;
+        if (warn is not null && !await Dialogs.ConfirmAsync(this, L.T("Hotkey"), $"{PlatformTheme.HotkeyText(hk.ToString())}: {warn}\n\n" + L.T("Assign anyway?"))) return;
         _app.ApplyHotkey(hk.ToString(), out _);
-        HotkeyBox.Text = _app.CurrentHotkeyText;
+        SetHotkeyText(_app.CurrentHotkeyText);
         ShowHotkeyStatus();
     }
 

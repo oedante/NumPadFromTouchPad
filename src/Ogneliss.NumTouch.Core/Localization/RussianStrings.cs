@@ -227,7 +227,7 @@ internal static class RussianStrings
         { "Contacts (on screen only, never recorded)", "Касания (только на экране, не записываются)" },
         { "Log", "Журнал" },
         { "Save", "Сохранить" },
-        { "Click the field and press the shortcut you want (for example, Ctrl+Alt+N).", "Щёлкните в поле и нажмите нужное сочетание (например, Ctrl+Alt+N)." },
+        { "Click the field and press the shortcut you want (for example, {0}).", "Щёлкните в поле и нажмите нужное сочетание (например, {0})." },
         { "Assign", "Назначить" },
         { "Default", "По умолчанию" },
         { "Key behavior", "Поведение клавиш" },

@@ -101,7 +101,10 @@ public partial class MainWindow : Window
         bool on = _app.Mode.IsNumPad;
         StatusDot.Fill = on ? Ui.Brush("OnBrush") : _app.InputError is not null ? Ui.Brush("ErrorBrush") : Ui.Brush("StatusDotOffBrush");
         StatusText.Text = on ? L.T("NumPad on") : _app.InputError is not null ? L.T("Touchpad unavailable") : L.T("NumPad off");
-        HotkeyHint.Text = _app.HotkeyRegistered ? PlatformTheme.HotkeyText(_app.CurrentHotkeyText) : L.T("No hotkey assigned");
+        HotkeyHint.Text = PlatformTheme.HotkeyText(_app.CurrentHotkeyText);
+        HotkeyChip.IsVisible = _app.HotkeyRegistered;
+        NoHotkeyText.IsVisible = !_app.HotkeyRegistered;
+        NoHotkeyText.Text = L.T("No hotkey assigned");
         ToolTip.SetTip(HotkeyChip, _app.HotkeyRegistered ? L.F("{0} — toggle", PlatformTheme.HotkeyText(_app.CurrentHotkeyText)) : null);
     }
 }

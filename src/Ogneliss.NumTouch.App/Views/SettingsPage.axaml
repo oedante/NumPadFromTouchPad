@@ -13,7 +13,7 @@
             <Border Classes="card">
                 <StackPanel>
                     <TextBlock Classes="section" Text="{l:T 'Hotkey'}" />
-                    <TextBlock Classes="subtle" Text="{l:T 'Click the field and press the shortcut you want (for example, Ctrl+Alt+N).'}" />
+                    <TextBlock x:Name="HotkeyHelp" Classes="subtle" />
                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
                         <TextBox x:Name="HotkeyBox" Width="240" IsReadOnly="True" FontSize="16" />
                         <Button x:Name="ApplyHotkeyButton" Content="{l:T 'Assign'}" />
