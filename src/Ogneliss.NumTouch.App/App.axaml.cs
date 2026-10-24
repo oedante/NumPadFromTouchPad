@@ -147,7 +147,7 @@ public partial class App : Application
         ShowMainWindow(null);
         string github = "GitHub";
         var r = await Dialogs.AskAsync(_window, L.F("About {0}", "Ogneliss NumTouch"),
-            $"Ogneliss NumTouch {AboutInfo.Version}\n\n" + L.T("Free and open source software under the MIT license.") + "\n" + AboutInfo.RepositoryUrl,
+            $"Ogneliss NumTouch {AboutInfo.Version}\n\n" + L.T("Free and open source software under the Apache License 2.0.") + "\n" + AboutInfo.RepositoryUrl,
             "OK", github);
         if (r == github) AboutInfo.OpenUrl(AboutInfo.RepositoryUrl);
     }

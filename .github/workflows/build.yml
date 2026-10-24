@@ -226,7 +226,7 @@ jobs:
               win-*) cp "artifacts/$rid/OgnelissNumTouch.exe" "dist/OgnelissNumTouch-$rid.exe" ;;
               linux-*)
                 d="dist/OgnelissNumTouch-$rid"; mkdir -p "$d"
-                cp "artifacts/$rid/OgnelissNumTouch" packaging/linux/* "$d/"
+                cp "artifacts/$rid/OgnelissNumTouch" packaging/linux/* LICENSE NOTICE "$d/"
                 tar -C dist -czf "dist/OgnelissNumTouch-$rid.tar.gz" "OgnelissNumTouch-$rid"; rm -rf "$d" ;;
               osx-*)
                 bash packaging/macos/make-app.sh "$rid"
@@ -266,6 +266,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cp LICENSE NOTICE dist/   # лицензия и указание автора — рядом со сборками (Apache 2.0, раздел 4)
           (cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
           # Описание релиза — только раздел последней версии из CHANGELOG.md.
           awk '/^## /{n++} n==1' CHANGELOG.md > release-notes.md

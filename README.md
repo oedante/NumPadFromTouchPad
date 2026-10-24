@@ -58,7 +58,7 @@ Works offline. The log contains technical events only; pressed keys, typed text 
 
 ## License
 
-Free and open source under the [MIT license](LICENSE). Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Website: [ogneliss.ru/numtouch](https://ogneliss.ru/numtouch/).
+Free and open source under the [Apache License 2.0](LICENSE). If you distribute the program or a fork, keep the [NOTICE](NOTICE) file — it credits the original author (Ermishin Oleg Andreevich, Ogneliss). Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Website: [ogneliss.ru/numtouch](https://ogneliss.ru/numtouch/).
 
 ## For developers
 

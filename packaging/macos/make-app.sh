@@ -13,6 +13,7 @@ short="${version%%-*}"
 rm -rf "$app"; mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp -R "$src/." "$app/Contents/MacOS/"
 cp "$root/packaging/macos/AppIcon.icns" "$app/Contents/Resources/"
+cp "$root/LICENSE" "$root/NOTICE" "$app/Contents/Resources/"   # Apache 2.0: лицензия и указание автора
 # В Contents/MacOS должен быть только код (Mach-O): символы отладки библиотек проекта не нужны и мешают подписи.
 find "$app/Contents/MacOS" -name "*.pdb" -delete
 cat > "$app/Contents/Info.plist" <<PLIST

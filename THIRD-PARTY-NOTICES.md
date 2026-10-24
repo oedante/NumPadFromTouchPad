@@ -8,7 +8,7 @@ delete, alert, exit, selection) are paths from Google's Material Design Icons / 
 Copyright Google LLC and contributors. Licensed under the Apache License, Version 2.0:
 https://www.apache.org/licenses/LICENSE-2.0
 
-## Avalonia, .NET, Inter
+## Avalonia, .NET, SkiaSharp
 
-Avalonia UI (MIT), .NET runtime (MIT) and the Inter typeface (SIL Open Font License 1.1) are included in the
+Avalonia UI (MIT), .NET runtime (MIT) and SkiaSharp (MIT) are included in the
 self-contained builds under their respective licenses.

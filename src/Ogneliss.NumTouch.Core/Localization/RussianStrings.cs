@@ -385,7 +385,7 @@ internal static class RussianStrings
         { "Changes are applied immediately.", "Изменения применяются сразу." },
         { "About", "О программе" },
         { "About {0}", "О программе {0}" },
-        { "Free and open source software under the MIT license.", "Бесплатная программа с открытым кодом под лицензией MIT." },
+        { "Free and open source software under the Apache License 2.0.", "Бесплатная программа с открытым кодом под лицензией Apache 2.0." },
         { "Source code on GitHub", "Исходный код на GitHub" },
         { "Report a problem", "Сообщить о проблеме" },
         { "Hide {0}", "Скрыть {0}" },

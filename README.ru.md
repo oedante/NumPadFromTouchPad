@@ -58,7 +58,7 @@
 
 ## Лицензия
 
-Бесплатно, с открытым кодом под [лицензией MIT](LICENSE). Помощь приветствуется — см. [CONTRIBUTING.md](CONTRIBUTING.md). Сайт: [ogneliss.ru/numtouch](https://ogneliss.ru/numtouch/ru/).
+Бесплатно, с открытым кодом под [лицензией Apache 2.0](LICENSE). Распространяя программу или её форк, сохраните файл [NOTICE](NOTICE) — в нём указан автор (Ермишин Олег Андреевич, Ogneliss). Помощь приветствуется — см. [CONTRIBUTING.md](CONTRIBUTING.md). Сайт: [ogneliss.ru/numtouch](https://ogneliss.ru/numtouch/ru/).
 
 ## Для разработчиков
 

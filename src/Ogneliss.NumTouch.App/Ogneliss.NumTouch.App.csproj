@@ -11,11 +11,11 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>Ogneliss NumTouch</Product>
-    <Version>3.0.0</Version>
+    <Version>3.0.1</Version>
     <Authors>Ermishin Oleg Andreevich (Ogneliss)</Authors>
-    <Copyright>Copyright © 2026 Ermishin Oleg Andreevich (Ogneliss). MIT License.</Copyright>
+    <Copyright>Copyright © 2026 Ermishin Oleg Andreevich (Ogneliss). Apache License 2.0.</Copyright>
     <Description>Turns a laptop touchpad into a numeric keypad. Free and open source.</Description>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/oedante/NumPadFromTouchPad</RepositoryUrl>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
